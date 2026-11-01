@@ -63,3 +63,29 @@ test('User registration, normalization, partner linking, streaks, and cheers', a
   assert.equal(dash2.cheers.length, 1);
   assert.equal(dash2.cheers[0].fromName, 'Carlos');
 });
+
+test('Timezone-aware due reminders match user timezone HH:MM accurately', async () => {
+  const db = await createDb({ sqlitePath: ':memory:' });
+  const u1 = await db.registerUser({
+    email: 'tz@example.com',
+    displayName: 'Mateo',
+    password: 'password123',
+    timezone: 'America/Bogota'
+  });
+  await db.updateUserSettings(u1.id, { reminderTime: '08:00', timezone: 'America/Bogota' });
+  await db.savePushSubscription(u1.id, {
+    endpoint: 'https://push.example.com/sub1',
+    keys: { p256dh: 'k1', auth: 'a1' }
+  });
+
+  // 2026-11-01T13:00:00Z is 08:00 in America/Bogota (UTC-5)
+  const utcDateAt8amBogota = new Date('2026-11-01T13:00:00.000Z');
+  const due = await db.getDueReminders(utcDateAt8amBogota);
+  assert.equal(due.length, 1);
+  assert.equal(due[0].userId, u1.id);
+
+  // 14:00Z is 09:00 in America/Bogota -> should not match 08:00
+  const utcDateAt9amBogota = new Date('2026-11-01T14:00:00.000Z');
+  const notDue = await db.getDueReminders(utcDateAt9amBogota);
+  assert.equal(notDue.length, 0);
+});

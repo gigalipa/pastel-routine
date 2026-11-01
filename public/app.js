@@ -17,6 +17,15 @@ function showToast(msg) {
   showToast._timer = setTimeout(() => el.classList.add('hidden'), 3200);
 }
 
+function escapeHtml(str) {
+  return String(str ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function getLocalToday() {
   const d = new Date();
   const y = d.getFullYear();
@@ -101,13 +110,14 @@ function renderAll() {
   if (partners.length > 0) {
     const p = partners[0];
     const doneToday = p.todayBlocks.length;
+    const safeName = escapeHtml(p.displayName);
     strip.classList.remove('hidden');
     strip.innerHTML = `
       <div>
-        <strong>🤝 ${p.displayName}</strong> (Semana ${p.currentWeek} · 🔥 ${p.streak}d)<br/>
+        <strong>🤝 ${safeName}</strong> (Semana ${p.currentWeek} · 🔥 ${p.streak}d)<br/>
         <span class="muted">${doneToday > 0 ? `✅ Ya completó ${doneToday} bloque(s) hoy` : '⏳ Aún no registra bloques hoy'} · ${p.completedVideosCount}/${p.totalVideosCount} videos vistos</span>
       </div>
-      <button class="btn btn-sm" type="button" onclick="quickCheer(${p.id}, '${p.displayName.replace(/'/g, '')}')">
+      <button class="btn btn-sm" type="button" onclick="quickCheer(${Number(p.id)}, '${safeName}')">
         👏 Enviar ánimo
       </button>
     `;
@@ -266,14 +276,16 @@ function renderPartnersView(partners, cheers, inviteCode) {
       `).join('');
 
       const recentVids = p.recentVideos.length > 0
-        ? p.recentVideos.map(rv => `<li style="font-size:0.84rem; margin-left:16px;">${rv.title}</li>`).join('')
+        ? p.recentVideos.map(rv => `<li style="font-size:0.84rem; margin-left:16px;">${escapeHtml(rv.title)}</li>`).join('')
         : '<li class="muted" style="font-size:0.84rem; margin-left:16px;">Sin videos marcados aún</li>';
+
+      const safePartnerName = escapeHtml(p.displayName);
 
       return `
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
             <div>
-              <h3>${p.displayName}</h3>
+              <h3>${safePartnerName}</h3>
               <span class="badge badge-week">Semana ${p.currentWeek}</span>
               <span class="badge">${p.todayBlocks.length > 0 ? `✅ ${p.todayBlocks.length} bloque(s) hoy` : '⏳ Pendiente hoy'}</span>
             </div>
@@ -295,13 +307,13 @@ function renderPartnersView(partners, cheers, inviteCode) {
           </div>
 
           <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:14px;">
-            <button class="btn btn-sm" type="button" onclick="sendCustomCheer(${p.id}, '👏 ¡Orgulloso de tu constancia hoy!')">
+            <button class="btn btn-sm" type="button" onclick="sendCustomCheer(${Number(p.id)}, '👏 ¡Orgulloso de tu constancia hoy!')">
               👏 ¡Gran constancia!
             </button>
-            <button class="btn btn-secondary btn-sm" type="button" onclick="sendCustomCheer(${p.id}, '🌿 Recuerda relajar la mandíbula y respirar hacia la espalda (Backbreathing)')">
+            <button class="btn btn-secondary btn-sm" type="button" onclick="sendCustomCheer(${Number(p.id)}, '🌿 Recuerda relajar la mandíbula y respirar hacia la espalda (Backbreathing)')">
               🌿 Recordar Backbreathing
             </button>
-            <button class="btn btn-secondary btn-sm" type="button" onclick="promptCheer(${p.id}, '${p.displayName.replace(/'/g, '')}')">
+            <button class="btn btn-secondary btn-sm" type="button" onclick="promptCheer(${Number(p.id)}, '${safePartnerName}')">
               ✍️ Mensaje personalizado
             </button>
           </div>
@@ -316,7 +328,7 @@ function renderPartnersView(partners, cheers, inviteCode) {
   } else {
     cheersEl.innerHTML = cheers.map(c => `
       <div style="padding:10px 0; border-bottom:1px solid var(--border);">
-        <strong>${c.fromName}:</strong> ${c.message}
+        <strong>${escapeHtml(c.fromName)}:</strong> ${escapeHtml(c.message)}
         <div class="muted" style="font-size:0.76rem;">${new Date(c.createdAt).toLocaleString()}</div>
       </div>
     `).join('');

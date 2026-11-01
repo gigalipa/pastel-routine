@@ -277,11 +277,11 @@ async function createAppServer(options = {}) {
   const reminderInterval = setInterval(async () => {
     try {
       const now = new Date();
-      const hhmm = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-      if (hhmm === lastMinuteTriggered) return;
-      lastMinuteTriggered = hhmm;
+      const minuteKey = now.toISOString().slice(0, 16);
+      if (minuteKey === lastMinuteTriggered) return;
+      lastMinuteTriggered = minuteKey;
 
-      const dueList = await db.getDueReminders(hhmm);
+      const dueList = await db.getDueReminders(now);
       for (const item of dueList) {
         const quotes = getQuotesForWeek(item.currentWeek);
         const quote = quotes[Math.floor(Math.random() * quotes.length)];

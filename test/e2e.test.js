@@ -23,4 +23,9 @@ test('PWA static assets, manifest, Service Worker, and UI structure are served p
   assert.equal(swRes.status, 200);
   const swText = await swRes.text();
   assert.ok(swText.includes("addEventListener('push'"));
+
+  const appJsRes = await fetch(`${baseUrl}/app.js`);
+  assert.equal(appJsRes.status, 200);
+  const appJsText = await appJsRes.text();
+  assert.ok(appJsText.includes('function escapeHtml('));
 });
