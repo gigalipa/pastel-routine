@@ -3,6 +3,10 @@ const state = {
   authMode: 'login',
   catalog: null,
   dashboard: null,
+  photos: { myPhotos: [], partnerPhotos: [] },
+  compareAngle: 'all',
+  beforePhotoId: null,
+  afterPhotoId: null,
   activeWeek: 1,
   activeFocus: 1,
   quoteIndex: 0,
@@ -79,7 +83,12 @@ async function loadInitialData() {
 
 async function refreshDashboard() {
   const today = getLocalToday();
-  state.dashboard = await api(`/api/dashboard?date=${today}`);
+  const [dash, photos] = await Promise.all([
+    api(`/api/dashboard?date=${today}`),
+    api('/api/photos')
+  ]);
+  state.dashboard = dash;
+  state.photos = photos;
   state.activeWeek = state.dashboard.me.user.currentWeek || 1;
   renderAll();
 }
@@ -128,7 +137,134 @@ function renderAll() {
   renderTodayView();
   renderLibraryView();
   renderPartnersView(partners, cheers, me.user.inviteCode);
+  renderPhotosView();
   renderSettingsView(me.user);
+}
+
+const ANGLE_LABELS = {
+  front: 'Frente',
+  profile_right: 'Perfil Der.',
+  profile_left: 'Perfil Izq.',
+  posture: 'Postura'
+};
+
+function photoImgUrl(photoId) {
+  return `/api/photos/${Number(photoId)}/image?token=${encodeURIComponent(state.token || '')}`;
+}
+
+function renderPhotosView() {
+  const { myPhotos, partnerPhotos } = state.photos || { myPhotos: [], partnerPhotos: [] };
+
+  document.querySelectorAll('#compareAngleTabs .pill-tab').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.angle === state.compareAngle);
+  });
+
+  const filteredMine = state.compareAngle === 'all'
+    ? myPhotos
+    : myPhotos.filter(p => p.angle === state.compareAngle);
+
+  const compEl = document.getElementById('beforeAfterContainer');
+  if (filteredMine.length === 0) {
+    compEl.innerHTML = `<p class="muted" style="padding:12px 0;">Sube tu primera foto abajo para activar el comparador Antes y Después.</p>`;
+  } else {
+    const firstPhoto = filteredMine.find(p => p.id === Number(state.beforePhotoId)) || filteredMine[0];
+    const lastPhoto = filteredMine.find(p => p.id === Number(state.afterPhotoId)) || filteredMine[filteredMine.length - 1];
+
+    const optionsBefore = filteredMine.map(p =>
+      `<option value="${p.id}" ${p.id === firstPhoto.id ? 'selected' : ''}>${p.takenAt} · Sem ${p.weekPhase} (${ANGLE_LABELS[p.angle] || p.angle})</option>`
+    ).join('');
+
+    const optionsAfter = filteredMine.map(p =>
+      `<option value="${p.id}" ${p.id === lastPhoto.id ? 'selected' : ''}>${p.takenAt} · Sem ${p.weekPhase} (${ANGLE_LABELS[p.angle] || p.angle})</option>`
+    ).join('');
+
+    compEl.innerHTML = `
+      <div class="compare-grid">
+        <div class="compare-box">
+          <strong>ANTES</strong>
+          <select onchange="setBeforePhoto(this.value)" style="margin-top:6px; font-size:0.8rem; padding:6px;">${optionsBefore}</select>
+          <img src="${photoImgUrl(firstPhoto.id)}" alt="Antes" loading="lazy" />
+          <div class="muted" style="font-size:0.78rem; margin-top:4px;">${escapeHtml(firstPhoto.caption || `Semana ${firstPhoto.weekPhase}`)}</div>
+        </div>
+        <div class="compare-box">
+          <strong>DESPUÉS</strong>
+          <select onchange="setAfterPhoto(this.value)" style="margin-top:6px; font-size:0.8rem; padding:6px;">${optionsAfter}</select>
+          <img src="${photoImgUrl(lastPhoto.id)}" alt="Después" loading="lazy" />
+          <div class="muted" style="font-size:0.78rem; margin-top:4px;">${escapeHtml(lastPhoto.caption || `Semana ${lastPhoto.weekPhase}`)}</div>
+        </div>
+      </div>
+    `;
+  }
+
+  const myGal = document.getElementById('myPhotosGallery');
+  if (myPhotos.length === 0) {
+    myGal.innerHTML = `<p class="muted">Aún no has subido fotos de tu proceso.</p>`;
+  } else {
+    myGal.innerHTML = myPhotos.slice().reverse().map(p => `
+      <div class="photo-card">
+        <img src="${photoImgUrl(p.id)}" alt="Foto" loading="lazy" />
+        <div class="photo-card-body">
+          <strong>${ANGLE_LABELS[p.angle] || p.angle} · Sem ${p.weekPhase}</strong>
+          <div class="muted" style="font-size:0.75rem;">${p.takenAt} ${p.sharedWithPartner ? '· 👁️ Compartida' : '· 🔒 Privada'}</div>
+          ${p.caption ? `<div style="margin-top:4px;">${escapeHtml(p.caption)}</div>` : ''}
+          <button class="btn btn-secondary btn-sm" style="margin-top:6px; width:100%; color:#a64141;" type="button" onclick="removePhoto(${p.id})">
+            🗑 Eliminar
+          </button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  const partGal = document.getElementById('partnerPhotosGallery');
+  if (partnerPhotos.length === 0) {
+    partGal.innerHTML = `<p class="muted">Tus compañeros aún no han compartido fotos.</p>`;
+  } else {
+    partGal.innerHTML = partnerPhotos.map(p => `
+      <div class="photo-card">
+        <img src="${photoImgUrl(p.id)}" alt="Foto compañero" loading="lazy" />
+        <div class="photo-card-body">
+          <strong>${escapeHtml(p.userName)} · Sem ${p.weekPhase}</strong>
+          <div class="muted" style="font-size:0.75rem;">${ANGLE_LABELS[p.angle] || p.angle} · ${p.takenAt}</div>
+          ${p.caption ? `<div style="margin-top:4px;">${escapeHtml(p.caption)}</div>` : ''}
+          <button class="btn btn-sm" style="margin-top:6px; width:100%;" type="button" onclick="sendCustomCheer(${p.userId}, '📸 ¡Increíble tu foto de avance de la Semana ${p.weekPhase}!')">
+            👏 Felicitar
+          </button>
+        </div>
+      </div>
+    `).join('');
+  }
+}
+
+function compressImageFile(file, maxDim = 1080, quality = 0.82) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('No se pudo leer la imagen.'));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('Archivo de imagen no válido.'));
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > maxDim || height > maxDim) {
+          if (width >= height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        const dataUrl = canvas.toDataURL('image/jpeg', quality);
+        resolve(dataUrl);
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
 }
 
 function renderTodayView() {
@@ -345,6 +481,26 @@ function renderSettingsView(user) {
 window.selectFocus = function(focusId) {
   state.activeFocus = focusId;
   renderLibraryView();
+};
+
+window.setBeforePhoto = function(id) {
+  state.beforePhotoId = Number(id);
+  renderPhotosView();
+};
+
+window.setAfterPhoto = function(id) {
+  state.afterPhotoId = Number(id);
+  renderPhotosView();
+};
+
+window.removePhoto = async function(photoId) {
+  try {
+    await api(`/api/photos/${Number(photoId)}`, { method: 'DELETE' });
+    await refreshDashboard();
+    showToast('🗑 Foto eliminada');
+  } catch (err) {
+    showToast(err.message);
+  }
 };
 
 window.toggleDailyChecklist = async function(blockId) {
@@ -614,10 +770,54 @@ document.querySelectorAll('#bottomNav .nav-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     const tab = btn.dataset.tab;
     document.querySelectorAll('#bottomNav .nav-btn').forEach(b => b.classList.toggle('active', b === btn));
-    ['Today', 'Library', 'Partners', 'Settings'].forEach(name => {
+    ['Today', 'Library', 'Partners', 'Photos', 'Settings'].forEach(name => {
       document.getElementById(`view${name}`).classList.toggle('hidden', name !== tab);
     });
   });
+});
+
+document.querySelectorAll('#compareAngleTabs .pill-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    state.compareAngle = btn.dataset.angle;
+    state.beforePhotoId = null;
+    state.afterPhotoId = null;
+    renderPhotosView();
+  });
+});
+
+document.getElementById('uploadPhotoForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const fileInput = document.getElementById('photoFileInput');
+  const file = fileInput.files && fileInput.files[0];
+  if (!file) return;
+
+  const btn = document.getElementById('uploadPhotoBtn');
+  btn.disabled = true;
+  btn.textContent = 'Optimizando y guardando...';
+
+  try {
+    const imageDataUrl = await compressImageFile(file);
+    await api('/api/photos', {
+      method: 'POST',
+      body: {
+        angle: document.getElementById('photoAngleSelect').value,
+        weekPhase: Number(document.getElementById('photoWeekSelect').value),
+        caption: document.getElementById('photoCaptionInput').value,
+        sharedWithPartner: document.getElementById('photoShareCheckbox').checked,
+        takenAt: getLocalToday(),
+        imageDataUrl
+      }
+    });
+    fileInput.value = '';
+    document.getElementById('photoCaptionInput').value = '';
+    await refreshDashboard();
+    showToast('📸 ¡Foto de proceso guardada!');
+  } catch (err) {
+    showToast(err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '📤 Guardar Foto de Proceso';
+  }
 });
 
 if ('serviceWorker' in navigator) {

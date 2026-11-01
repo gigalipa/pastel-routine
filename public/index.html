@@ -142,6 +142,77 @@
         </div>
       </section>
 
+      <!-- TAB: FOTOS DE PROCESO (ANTES Y DESPUÉS) -->
+      <section id="viewPhotos" class="hidden">
+        <div class="card">
+          <h2>📸 Comparador Antes y Después</h2>
+          <p class="muted" style="margin-bottom: 10px;">
+            Compara tu evolución facial, cervical y postural lado a lado según el ángulo.
+          </p>
+          <div class="week-tabs" id="compareAngleTabs">
+            <button class="pill-tab active" data-angle="all" type="button">Todos</button>
+            <button class="pill-tab" data-angle="front" type="button">Frente</button>
+            <button class="pill-tab" data-angle="profile_right" type="button">Perfil Der.</button>
+            <button class="pill-tab" data-angle="profile_left" type="button">Perfil Izq.</button>
+            <button class="pill-tab" data-angle="posture" type="button">Postura</button>
+          </div>
+          <div id="beforeAfterContainer"></div>
+        </div>
+
+        <div class="card">
+          <h3>➕ Subir Nueva Foto de Avance</h3>
+          <p class="muted" style="margin-bottom: 12px;">
+            La foto se optimiza automáticamente antes de guardarse en Neon Object Storage.
+          </p>
+          <form id="uploadPhotoForm">
+            <div class="input-group">
+              <label for="photoFileInput">Seleccionar o tomar foto</label>
+              <input id="photoFileInput" type="file" accept="image/*" required />
+            </div>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+              <div class="input-group">
+                <label for="photoAngleSelect">Ángulo</label>
+                <select id="photoAngleSelect">
+                  <option value="front">Frente (Rostro)</option>
+                  <option value="profile_right">Perfil Derecho</option>
+                  <option value="profile_left">Perfil Izquierdo</option>
+                  <option value="posture">Postura Corporal</option>
+                </select>
+              </div>
+              <div class="input-group">
+                <label for="photoWeekSelect">Semana</label>
+                <select id="photoWeekSelect">
+                  <option value="1">Semana 1</option>
+                  <option value="2">Semana 2</option>
+                  <option value="3">Semana 3+</option>
+                </select>
+              </div>
+            </div>
+            <div class="input-group">
+              <label for="photoCaptionInput">Nota o comentario (opcional)</label>
+              <input id="photoCaptionInput" type="text" placeholder="Ej. Día 1 antes de empezar Backbreathing" />
+            </div>
+            <div class="input-group" style="display:flex; align-items:center; gap:8px;">
+              <input id="photoShareCheckbox" type="checkbox" checked style="width:auto;" />
+              <label for="photoShareCheckbox" style="margin:0;">👁️ Compartir esta foto con mis compañeros vinculados</label>
+            </div>
+            <button type="submit" class="btn" style="width:100%;" id="uploadPhotoBtn">
+              📤 Guardar Foto de Proceso
+            </button>
+          </form>
+        </div>
+
+        <div class="card">
+          <h3>🖼️ Mis Fotos Guardadas</h3>
+          <div id="myPhotosGallery" class="photo-grid"></div>
+        </div>
+
+        <div class="card">
+          <h3>🤝 Fotos Compartidas por mis Compañeros</h3>
+          <div id="partnerPhotosGallery" class="photo-grid"></div>
+        </div>
+      </section>
+
       <!-- TAB 4: AJUSTES Y RECORDATORIOS -->
       <section id="viewSettings" class="hidden">
         <div class="card">
@@ -237,6 +308,10 @@
     <button class="nav-btn" data-tab="Partners" type="button">
       <span class="icon">🤝</span>
       <span>Compañeros</span>
+    </button>
+    <button class="nav-btn" data-tab="Photos" type="button">
+      <span class="icon">📸</span>
+      <span>Proceso</span>
     </button>
     <button class="nav-btn" data-tab="Settings" type="button">
       <span class="icon">🔔</span>

@@ -6,6 +6,32 @@ const { createDb } = require('./lib/db');
 const { signToken, verifyToken } = require('./lib/auth');
 const { getCatalog, getQuotesForWeek, syncFromGoogleSheet } = require('./lib/catalog');
 const { generateIcs } = require('./lib/ics');
+const { storePhotoObject, fetchPhotoObject, deletePhotoObject } = require('./lib/storage');
+
+function loadEnvFiles() {
+  for (const file of ['.env.local', '.env']) {
+    const full = path.join(__dirname, file);
+    if (fs.existsSync(full)) {
+      const lines = fs.readFileSync(full, 'utf8').split(/\r?\n/);
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith('#')) continue;
+        const eqIdx = trimmed.indexOf('=');
+        if (eqIdx === -1) continue;
+        const key = trimmed.slice(0, eqIdx).trim();
+        let val = trimmed.slice(eqIdx + 1).trim();
+        if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+          val = val.slice(1, -1);
+        }
+        if (process.env[key] === undefined) {
+          process.env[key] = val;
+        }
+      }
+    }
+  }
+}
+
+loadEnvFiles();
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -22,7 +48,7 @@ function readJsonBody(req) {
     let body = '';
     req.on('data', chunk => {
       body += chunk;
-      if (body.length > 1e6) {
+      if (body.length > 8 * 1024 * 1024) {
         req.destroy();
         reject(new Error('Payload demasiado grande'));
       }
@@ -246,6 +272,64 @@ async function createAppServer(options = {}) {
             return sendJson(res, 200, { ok: true, count: updatedCatalog.videos.length, updatedAt: updatedCatalog.updatedAt });
           } catch (err) {
             return sendJson(res, 500, { error: err.message });
+          }
+        }
+
+        if (pathname === '/api/photos' && req.method === 'GET') {
+          const photos = await db.listProgressPhotos(auth.id);
+          return sendJson(res, 200, photos);
+        }
+
+        if (pathname === '/api/photos' && req.method === 'POST') {
+          const body = await readJsonBody(req);
+          try {
+            const stored = await storePhotoObject({ userId: auth.id, dataUrl: body.imageDataUrl });
+            const saved = await db.addProgressPhoto(auth.id, {
+              angle: body.angle,
+              weekPhase: body.weekPhase,
+              caption: body.caption,
+              sharedWithPartner: body.sharedWithPartner !== false,
+              takenAt: body.takenAt,
+              storageType: stored.storageType,
+              objectKey: stored.objectKey,
+              mimeType: stored.mimeType,
+              dataUrl: stored.dataUrl
+            });
+            return sendJson(res, 200, saved);
+          } catch (err) {
+            return sendJson(res, 400, { error: err.message });
+          }
+        }
+
+        const photoImageMatch = pathname.match(/^\/api\/photos\/(\d+)\/image$/);
+        if (photoImageMatch && req.method === 'GET') {
+          try {
+            const photoRow = await db.getProgressPhotoForViewer(Number(photoImageMatch[1]), auth.id);
+            if (!photoRow) return sendJson(res, 404, { error: 'Foto no encontrada' });
+            const { mimeType, buffer } = await fetchPhotoObject({
+              storageType: photoRow.storage_type,
+              objectKey: photoRow.object_key,
+              mimeType: photoRow.mime_type,
+              dataUrl: photoRow.data_url
+            });
+            res.writeHead(200, {
+              'Content-Type': mimeType,
+              'Cache-Control': 'private, max-age=3600'
+            });
+            return res.end(buffer);
+          } catch (err) {
+            return sendJson(res, err.statusCode || 400, { error: err.message });
+          }
+        }
+
+        const photoDeleteMatch = pathname.match(/^\/api\/photos\/(\d+)$/);
+        if (photoDeleteMatch && req.method === 'DELETE') {
+          try {
+            const deleted = await db.deleteProgressPhoto(Number(photoDeleteMatch[1]), auth.id);
+            await deletePhotoObject({ storageType: deleted.storage_type, objectKey: deleted.object_key });
+            return sendJson(res, 200, { deleted: true, id: Number(photoDeleteMatch[1]) });
+          } catch (err) {
+            return sendJson(res, err.statusCode || 400, { error: err.message });
           }
         }
 

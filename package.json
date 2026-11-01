@@ -4,6 +4,7 @@
   "description": "PWA de seguimiento y motivación para las rutinas de Oscar Patel",
   "main": "server.js",
   "scripts": {
+    "build": "node scripts/build-catalog.js",
     "start": "node server.js",
     "test": "node --test test/*.test.js"
   },
@@ -11,6 +12,12 @@
     "node": ">=22.0.0"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1161.0",
+    "@aws-sdk/s3-presigned-post": "^3.1161.0",
+    "@aws-sdk/s3-request-presigner": "^3.1161.0",
+    "@neon/config": "^1.10.0",
+    "@neon/env": "^1.6.8",
+    "files-sdk": "^3.1.2",
     "pg": "^8.13.1",
     "web-push": "^3.6.7"
   }

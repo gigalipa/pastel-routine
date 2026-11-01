@@ -3,3 +3,7 @@ node_modules/
 *.sqlite
 *.db
 .env
+.env.local
+.neon
+
+.neon
