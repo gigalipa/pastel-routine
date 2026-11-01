@@ -1,0 +1,18 @@
+{
+  "name": "Pastel Routine — Oscar Patel Tracker",
+  "short_name": "Pastel Routine",
+  "description": "Rutinas de Oscar Patel en pareja: seguimiento semanal, biblioteca de 66 videos y motivación compartida.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fbf8f5",
+  "theme_color": "#7b9e87",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

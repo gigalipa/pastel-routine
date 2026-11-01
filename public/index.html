@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#7b9e87" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <title>Pastel Routine — Rutinas de Oscar Patel</title>
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/icon.svg" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <img src="/icon.svg" alt="Pastel Routine" />
+        <span>Pastel Routine</span>
+      </div>
+      <div id="userHeaderInfo" class="hidden">
+        <span id="streakBadge" class="streak-pill">🔥 0 días</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- Auth Screen -->
+    <section id="authSection" class="card">
+      <h2 id="authTitle">Bienvenido a Pastel Routine</h2>
+      <p class="muted" style="margin-bottom: 16px;">
+        Sigue el protocolo progresivo de Oscar Patel, registra tus hábitos diarios y motívate junto a tu pareja o amigos.
+      </p>
+      <div class="week-tabs">
+        <button id="tabLoginBtn" class="pill-tab active" type="button">Iniciar Sesión</button>
+        <button id="tabRegisterBtn" class="pill-tab" type="button">Crear Cuenta</button>
+      </div>
+      <form id="authForm">
+        <div id="registerNameGroup" class="input-group hidden">
+          <label for="authName">Tu Nombre Visible (ej. Carlos o Ana)</label>
+          <input id="authName" type="text" placeholder="Ej. Carlos" />
+        </div>
+        <div class="input-group">
+          <label for="authEmail">Correo Electrónico</label>
+          <input id="authEmail" type="email" required placeholder="tu@correo.com" />
+        </div>
+        <div class="input-group">
+          <label for="authPassword">Contraseña</label>
+          <input id="authPassword" type="password" required minlength="6" placeholder="Mínimo 6 caracteres" />
+        </div>
+        <button type="submit" class="btn" style="width: 100%; margin-top: 6px;" id="authSubmitBtn">
+          Entrar a mi rutina
+        </button>
+      </form>
+    </section>
+
+    <!-- Main App Content -->
+    <div id="appContent" class="hidden">
+      <!-- TAB 1: HOY -->
+      <section id="viewToday">
+        <div class="card quote-card">
+          <p id="dailyQuoteText" class="quote-text"></p>
+          <div class="quote-author">
+            <span id="dailyQuoteAuthor"></span>
+            <button id="nextQuoteBtn" class="btn btn-secondary btn-sm" type="button">🔄 Otra frase</button>
+          </div>
+        </div>
+
+        <div id="partnerQuickStrip" class="partner-strip hidden"></div>
+
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <h2>Mi Plan Semanal</h2>
+            <span id="todayDateLabel" class="muted"></span>
+          </div>
+          <div class="week-tabs" id="weekSelectorTabs">
+            <button class="pill-tab" data-week="1" type="button">Semana 1: Calma</button>
+            <button class="pill-tab" data-week="2" type="button">Semana 2: Fascia y Postura</button>
+            <button class="pill-tab" data-week="3" type="button">Semana 3+: Remodelación</button>
+          </div>
+
+          <h3 id="weekPlanTitle"></h3>
+          <p id="weekPlanDesc" class="muted" style="margin-bottom: 12px;"></p>
+          <div id="weekSafetyBanner" class="warning-banner hidden"></div>
+
+          <h3 style="margin-top: 14px; margin-bottom: 10px;">Checklist Diario de Práctica</h3>
+          <div id="dailyChecklistContainer"></div>
+
+          <h3 style="margin-top: 18px; margin-bottom: 10px;">Videos Base de Esta Semana</h3>
+          <div id="weekVideosContainer"></div>
+        </div>
+      </section>
+
+      <!-- TAB 2: BIBLIOTECA (66 VIDEOS) -->
+      <section id="viewLibrary" class="hidden">
+        <div class="card">
+          <h2>Biblioteca Completa (66 Videos)</h2>
+          <p class="muted" style="margin-bottom: 12px;">
+            Organizados por enfoque y orden progresivo de dificultad según tu hoja de cálculo.
+          </p>
+          <div id="globalProgressSummary" style="margin-bottom: 14px;"></div>
+
+          <div class="focus-tabs" id="focusSelectorTabs"></div>
+
+          <div style="display:flex; gap:8px; margin-bottom: 12px;">
+            <input id="searchVideosInput" type="search" placeholder="Buscar por título, técnica o categoría..." />
+            <select id="filterStatusSelect" style="max-width: 150px;">
+              <option value="all">Todos</option>
+              <option value="pending">Por ver</option>
+              <option value="done">Completados</option>
+            </select>
+          </div>
+
+          <div id="libraryVideosList"></div>
+        </div>
+      </section>
+
+      <!-- TAB 3: COMPAÑEROS -->
+      <section id="viewPartners" class="hidden">
+        <div class="card">
+          <h2>Tu Código de Compañero</h2>
+          <p class="muted" style="margin-bottom: 10px;">
+            Comparte este código con tu esposa, familiares o amigos para ver su avance mutuo y enviarse motivación:
+          </p>
+          <div style="display:flex; gap:10px; align-items:center; margin-bottom: 14px;">
+            <input id="myInviteCodeInput" type="text" readonly style="font-weight:700; font-size:1.1rem; text-align:center; background:var(--surface-soft);" />
+            <button id="copyInviteBtn" class="btn btn-secondary" type="button">Copiar</button>
+          </div>
+
+          <form id="connectPartnerForm" style="display:flex; gap:8px;">
+            <input id="partnerCodeInput" type="text" placeholder="Ingresa el código (ej. PATEL-ABCD)" required />
+            <button type="submit" class="btn">Vincular</button>
+          </form>
+        </div>
+
+        <div id="partnersListContainer"></div>
+
+        <div class="card">
+          <h3>💌 Ánimos y Mensajes Recibidos</h3>
+          <div id="cheersHistoryContainer" style="margin-top: 10px;"></div>
+        </div>
+      </section>
+
+      <!-- TAB 4: AJUSTES Y RECORDATORIOS -->
+      <section id="viewSettings" class="hidden">
+        <div class="card">
+          <h2>🔔 Recordatorios y Calendario</h2>
+          <p class="muted" style="margin-bottom: 14px;">
+            Configura a qué hora quieres recibir tu recordatorio diario con frases de Oscar Patel.
+          </p>
+          <form id="settingsForm">
+            <div class="input-group">
+              <label for="settingsName">Nombre Visible</label>
+              <input id="settingsName" type="text" required />
+            </div>
+            <div class="input-group">
+              <label for="settingsTime">Hora diaria del recordatorio</label>
+              <input id="settingsTime" type="time" required />
+            </div>
+            <button type="submit" class="btn" style="width:100%;">Guardar Ajustes</button>
+          </form>
+
+          <hr style="border:none; border-top:1px solid var(--border); margin:16px 0;" />
+
+          <div style="display:flex; flex-direction:column; gap:10px;">
+            <button id="enablePushBtn" class="btn btn-peach" type="button">
+              📲 Activar Notificaciones Push en este dispositivo
+            </button>
+            <button id="testPushBtn" class="btn btn-secondary" type="button">
+              ✨ Enviar notificación de prueba ahora
+            </button>
+            <button id="downloadIcsBtn" class="btn btn-secondary" type="button">
+              📅 Descargar rutina para Google / Apple Calendar (.ics)
+            </button>
+          </div>
+        </div>
+
+        <div id="adminCard" class="card hidden">
+          <h3>⚙️ Administración del Catálogo</h3>
+          <p class="muted" style="margin-bottom: 10px;">
+            Sincroniza los videos directamente desde tu Google Sheet si hiciste cambios recientes.
+          </p>
+          <button id="syncSheetBtn" class="btn btn-secondary" type="button">
+            🔄 Sincronizar con Google Sheet ahora
+          </button>
+        </div>
+
+        <div class="card">
+          <button id="logoutBtn" class="btn btn-secondary" style="width:100%; color:#a64141;" type="button">
+            Cerrar Sesión
+          </button>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- Video Player Modal -->
+  <div id="videoModal" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
+        <div>
+          <span id="modalVideoBadge" class="badge"></span>
+          <h3 id="modalVideoTitle"></h3>
+        </div>
+        <button id="closeModalBtn" class="btn btn-secondary btn-sm" type="button">✕</button>
+      </div>
+      <div id="modalVideoFrame" class="video-frame"></div>
+      <p id="modalVideoDesc" class="muted" style="margin-bottom: 12px;"></p>
+
+      <div class="input-group">
+        <label for="modalVideoNotes">Tus notas o sensaciones al practicar este video:</label>
+        <textarea id="modalVideoNotes" rows="2" placeholder="Ej. Sentí alivio inmediato en el cuello al respirar hacia atrás..."></textarea>
+      </div>
+
+      <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:space-between;">
+        <a id="modalYoutubeLink" href="#" target="_blank" rel="noopener" class="btn btn-secondary btn-sm">
+          Abrir en YouTube ↗
+        </a>
+        <button id="modalToggleCompleteBtn" class="btn" type="button">
+          ✓ Marcar como aprendido
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Navigation -->
+  <nav id="bottomNav" class="bottom-nav hidden">
+    <button class="nav-btn active" data-tab="Today" type="button">
+      <span class="icon">📅</span>
+      <span>Hoy</span>
+    </button>
+    <button class="nav-btn" data-tab="Library" type="button">
+      <span class="icon">📚</span>
+      <span>Biblioteca</span>
+    </button>
+    <button class="nav-btn" data-tab="Partners" type="button">
+      <span class="icon">🤝</span>
+      <span>Compañeros</span>
+    </button>
+    <button class="nav-btn" data-tab="Settings" type="button">
+      <span class="icon">🔔</span>
+      <span>Ajustes</span>
+    </button>
+  </nav>
+
+  <div id="toast" class="toast hidden"></div>
+  <script src="/app.js"></script>
+</body>
+</html>
