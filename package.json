@@ -1,0 +1,17 @@
+{
+  "name": "pastel-routine",
+  "version": "1.0.0",
+  "description": "PWA de seguimiento y motivación para las rutinas de Oscar Patel",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test/*.test.js"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "dependencies": {
+    "pg": "^8.13.1",
+    "web-push": "^3.6.7"
+  }
+}
