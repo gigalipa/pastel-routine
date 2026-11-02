@@ -12,7 +12,13 @@ const state = {
   quoteIndex: 0,
   modalVideoId: null,
   modalBlockId: null,
-  modalKeepAliveTimer: null
+  modalKeepAliveTimer: null,
+  capturedDataUrl: null,
+  cameraStream: null,
+  cameraFacing: 'user',
+  cameraTimerSec: 0,
+  cameraGhostOn: false,
+  cameraAngle: 'front'
 };
 
 function showToast(msg) {
@@ -149,6 +155,78 @@ const ANGLE_LABELS = {
   profile_left: 'Perfil Izq.',
   posture: 'Postura'
 };
+
+const ANGLE_GUIDE_TIPS = {
+  front: '🎯 Frente: Alinea tus pupilas en la línea superior, el centro de tu nariz/mentón en el eje vertical y relaja la mandíbula (lengua en succión suave).',
+  profile_right: '🎯 Perfil Derecho (Plano de Frankfort): Alinea el conducto auditivo (oreja) con el borde inferior del ojo en la línea horizontal. No levantes el mentón.',
+  profile_left: '🎯 Perfil Izquierdo (Plano de Frankfort): Alinea el conducto auditivo (oreja) con el borde inferior del ojo en la línea horizontal. Cuello relajado.',
+  posture: '🎯 Postura Corporal: Alinea la plomada vertical desde la oreja pasando por el hombro y cadera; verifica nivel horizontal de hombros y pelvis.'
+};
+
+function getCameraGuideSvg(angle = 'front') {
+  if (angle === 'profile_right' || angle === 'profile_left') {
+    const isLeft = angle === 'profile_left';
+    const flip = isLeft ? 'transform="scale(-1, 1) translate(-300, 0)"' : '';
+    return `
+      <svg viewBox="0 0 300 400" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+        <g ${flip}>
+          <!-- Cervical plumb line (Ear to Shoulder) -->
+          <line x1="125" y1="40" x2="125" y2="375" stroke="#8fb4c9" stroke-width="1.6" stroke-dasharray="6,5" opacity="0.85" />
+          <text x="131" y="362" fill="#8fb4c9" font-size="10" font-weight="600">Eje Oreja-Hombro</text>
+
+          <!-- Frankfort Horizontal Plane (Tragus of ear to infraorbital rim) -->
+          <line x1="30" y1="168" x2="275" y2="168" stroke="#7b9e87" stroke-width="2" stroke-dasharray="7,4" />
+          <circle cx="125" cy="168" r="5" fill="none" stroke="#e8a598" stroke-width="2" />
+          <circle cx="202" cy="168" r="5" fill="none" stroke="#e8a598" stroke-width="2" />
+          <text x="36" y="160" fill="#ffffff" font-size="10" font-weight="600">Plano de Frankfort (Oreja → Pómulo)</text>
+
+          <!-- Profile head & jaw reference contour -->
+          <path d="M110 85 C155 75, 205 95, 210 140 C212 155, 224 172, 222 182 C215 190, 216 205, 212 215 C208 232, 195 242, 165 246 L142 255 L145 320"
+                fill="none" stroke="#ffffff" stroke-width="2" stroke-dasharray="4,4" opacity="0.7" />
+        </g>
+      </svg>
+    `;
+  }
+
+  if (angle === 'posture') {
+    return `
+      <svg viewBox="0 0 300 400" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+        <!-- Vertical Plumb Line -->
+        <line x1="150" y1="20" x2="150" y2="385" stroke="#7b9e87" stroke-width="2" stroke-dasharray="6,4" />
+        <!-- Horizontal Reference Levels: Eyes, Shoulders, Pelvis, Knees -->
+        <line x1="50" y1="78" x2="250" y2="78" stroke="#ffffff" stroke-width="1.4" stroke-dasharray="4,4" opacity="0.75" />
+        <text x="54" y="72" fill="#ffffff" font-size="9.5">Nivel Ojos</text>
+
+        <line x1="35" y1="138" x2="265" y2="138" stroke="#e8a598" stroke-width="1.8" stroke-dasharray="5,4" />
+        <text x="40" y="132" fill="#e8a598" font-size="10" font-weight="600">Nivel Hombros / Clavícula</text>
+
+        <line x1="45" y1="245" x2="255" y2="245" stroke="#8fb4c9" stroke-width="1.8" stroke-dasharray="5,4" />
+        <text x="50" y="239" fill="#8fb4c9" font-size="10" font-weight="600">Nivel Pelvis / Cadera</text>
+
+        <circle cx="150" cy="82" r="28" fill="none" stroke="#ffffff" stroke-width="1.5" opacity="0.55" />
+        <path d="M95 138 L205 138 L190 245 L110 245 Z" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-dasharray="4,4" opacity="0.5" />
+      </svg>
+    `;
+  }
+
+  // Default: 'front' (Facial symmetry & maxilla)
+  return `
+    <svg viewBox="0 0 300 400" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+      <!-- Central facial symmetry axis -->
+      <line x1="150" y1="35" x2="150" y2="365" stroke="#7b9e87" stroke-width="2" stroke-dasharray="6,4" />
+      <!-- Interpupillary line (Eyes) -->
+      <line x1="55" y1="165" x2="245" y2="165" stroke="#e8a598" stroke-width="1.8" stroke-dasharray="5,4" />
+      <text x="60" y="158" fill="#ffffff" font-size="10" font-weight="600">Línea Interpupilar (Ojos)</text>
+      <!-- Commissural / Jaw line -->
+      <line x1="75" y1="232" x2="225" y2="232" stroke="#8fb4c9" stroke-width="1.5" stroke-dasharray="4,4" />
+      <text x="80" y="246" fill="#8fb4c9" font-size="9.5" font-weight="600">Comisura Labial / Mandíbula</text>
+      <!-- Head oval contour -->
+      <ellipse cx="150" cy="182" rx="68" ry="88" fill="none" stroke="#ffffff" stroke-width="2" opacity="0.75" />
+      <!-- Neck & shoulders contour -->
+      <path d="M118 260 L118 300 L50 330 M182 260 L182 300 L250 330" fill="none" stroke="#ffffff" stroke-width="1.8" stroke-dasharray="5,4" opacity="0.6" />
+    </svg>
+  `;
+}
 
 function photoImgUrl(photoId) {
   return `/api/photos/${Number(photoId)}/image?token=${encodeURIComponent(state.token || '')}`;
@@ -845,18 +923,197 @@ document.querySelectorAll('#compareAngleTabs .pill-tab').forEach(btn => {
   });
 });
 
+document.getElementById('photoFileInput').addEventListener('change', async e => {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  try {
+    state.capturedDataUrl = await compressImageFile(file);
+    const wrap = document.getElementById('capturedPhotoPreviewWrap');
+    const img = document.getElementById('capturedPhotoPreviewImg');
+    img.src = state.capturedDataUrl;
+    wrap.classList.remove('hidden');
+    showToast('🖼️ Imagen lista para guardar');
+  } catch (err) {
+    showToast(err.message);
+  }
+});
+
+function stopCameraStream() {
+  if (state.cameraStream) {
+    state.cameraStream.getTracks().forEach(t => t.stop());
+    state.cameraStream = null;
+  }
+}
+
+function updateCameraGuideOverlay() {
+  const angle = state.cameraAngle || 'front';
+  document.querySelectorAll('#cameraAngleTabs .pill-tab').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.camAngle === angle);
+  });
+  document.getElementById('cameraGuideTip').textContent = ANGLE_GUIDE_TIPS[angle] || ANGLE_GUIDE_TIPS.front;
+  document.getElementById('cameraGuideOverlay').innerHTML = getCameraGuideSvg(angle);
+
+  // Sync form angle selector
+  const formSelect = document.getElementById('photoAngleSelect');
+  if (formSelect) formSelect.value = angle;
+
+  // Update Ghost Day 1 reference image for this angle
+  const ghostImg = document.getElementById('cameraGhostImg');
+  const myPhotos = (state.photos && state.photos.myPhotos) || [];
+  const earliestForAngle = myPhotos.find(p => p.angle === angle);
+  if (state.cameraGhostOn && earliestForAngle) {
+    ghostImg.src = photoImgUrl(earliestForAngle.id);
+    ghostImg.classList.remove('hidden');
+  } else {
+    ghostImg.classList.add('hidden');
+  }
+}
+
+async function startCameraStream() {
+  stopCameraStream();
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    throw new Error('Tu navegador no permite acceso directo a la cámara.');
+  }
+  const stream = await navigator.mediaDevices.getUserMedia({
+    video: {
+      facingMode: state.cameraFacing,
+      width: { ideal: 1080 },
+      height: { ideal: 1440 }
+    },
+    audio: false
+  });
+  state.cameraStream = stream;
+  const videoEl = document.getElementById('cameraVideoEl');
+  videoEl.srcObject = stream;
+  videoEl.classList.toggle('mirrored', state.cameraFacing === 'user');
+}
+
+document.getElementById('openGuidedCameraBtn').addEventListener('click', async () => {
+  state.cameraAngle = document.getElementById('photoAngleSelect').value || 'front';
+  updateCameraGuideOverlay();
+  document.getElementById('cameraModal').classList.remove('hidden');
+  try {
+    await startCameraStream();
+  } catch (err) {
+    showToast(err.message);
+  }
+});
+
+document.getElementById('closeCameraModalBtn').addEventListener('click', () => {
+  stopCameraStream();
+  document.getElementById('cameraModal').classList.add('hidden');
+});
+
+document.querySelectorAll('#cameraAngleTabs .pill-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    state.cameraAngle = btn.dataset.camAngle;
+    updateCameraGuideOverlay();
+  });
+});
+
+document.getElementById('toggleCameraFacingBtn').addEventListener('click', async () => {
+  state.cameraFacing = state.cameraFacing === 'user' ? 'environment' : 'user';
+  try {
+    await startCameraStream();
+  } catch (err) {
+    showToast(err.message);
+  }
+});
+
+document.getElementById('toggleCameraTimerBtn').addEventListener('click', () => {
+  const cycle = [0, 3, 5];
+  const nextIdx = (cycle.indexOf(state.cameraTimerSec) + 1) % cycle.length;
+  state.cameraTimerSec = cycle[nextIdx];
+  document.getElementById('toggleCameraTimerBtn').textContent = `⏱️ Temp: ${state.cameraTimerSec}s`;
+});
+
+document.getElementById('toggleCameraGhostBtn').addEventListener('click', () => {
+  const myPhotos = (state.photos && state.photos.myPhotos) || [];
+  const earliestForAngle = myPhotos.find(p => p.angle === state.cameraAngle);
+  if (!earliestForAngle) {
+    showToast('Sube primero una foto en este ángulo para usarla como calco del Día 1');
+    return;
+  }
+  state.cameraGhostOn = !state.cameraGhostOn;
+  document.getElementById('toggleCameraGhostBtn').textContent = `👻 Calco Día 1: ${state.cameraGhostOn ? 'On' : 'Off'}`;
+  updateCameraGuideOverlay();
+});
+
+function captureCurrentVideoFrame() {
+  const videoEl = document.getElementById('cameraVideoEl');
+  const vw = videoEl.videoWidth || 720;
+  const vh = videoEl.videoHeight || 960;
+
+  // Target 3:4 aspect ratio crop
+  const targetRatio = 3 / 4;
+  let cropW = vw;
+  let cropH = vh;
+  if (vw / vh > targetRatio) {
+    cropW = Math.round(vh * targetRatio);
+  } else {
+    cropH = Math.round(vw / targetRatio);
+  }
+  const sx = Math.round((vw - cropW) / 2);
+  const sy = Math.round((vh - cropH) / 2);
+
+  const outW = Math.min(810, cropW);
+  const outH = Math.round(outW / targetRatio);
+
+  const canvas = document.createElement('canvas');
+  canvas.width = outW;
+  canvas.height = outH;
+  const ctx = canvas.getContext('2d');
+
+  if (state.cameraFacing === 'user') {
+    ctx.translate(outW, 0);
+    ctx.scale(-1, 1);
+  }
+  ctx.drawImage(videoEl, sx, sy, cropW, cropH, 0, 0, outW, outH);
+  return canvas.toDataURL('image/jpeg', 0.84);
+}
+
+document.getElementById('snapCameraPhotoBtn').addEventListener('click', async () => {
+  const snapBtn = document.getElementById('snapCameraPhotoBtn');
+  const cdEl = document.getElementById('cameraCountdownEl');
+  snapBtn.disabled = true;
+
+  if (state.cameraTimerSec > 0) {
+    cdEl.classList.remove('hidden');
+    for (let s = state.cameraTimerSec; s > 0; s--) {
+      cdEl.textContent = String(s);
+      await new Promise(r => setTimeout(r, 1000));
+    }
+    cdEl.classList.add('hidden');
+  }
+
+  state.capturedDataUrl = captureCurrentVideoFrame();
+  stopCameraStream();
+  document.getElementById('cameraModal').classList.add('hidden');
+
+  const wrap = document.getElementById('capturedPhotoPreviewWrap');
+  const img = document.getElementById('capturedPhotoPreviewImg');
+  img.src = state.capturedDataUrl;
+  wrap.classList.remove('hidden');
+  snapBtn.disabled = false;
+  showToast('📸 ¡Foto capturada! Revisa los datos y toca Guardar.');
+});
+
 document.getElementById('uploadPhotoForm').addEventListener('submit', async e => {
   e.preventDefault();
   const fileInput = document.getElementById('photoFileInput');
   const file = fileInput.files && fileInput.files[0];
-  if (!file) return;
+
+  if (!state.capturedDataUrl && !file) {
+    showToast('Primero toma una foto con la cámara o elige una de tu galería.');
+    return;
+  }
 
   const btn = document.getElementById('uploadPhotoBtn');
   btn.disabled = true;
   btn.textContent = 'Optimizando y guardando...';
 
   try {
-    const imageDataUrl = await compressImageFile(file);
+    const imageDataUrl = state.capturedDataUrl || (await compressImageFile(file));
     await api('/api/photos', {
       method: 'POST',
       body: {
@@ -868,8 +1125,10 @@ document.getElementById('uploadPhotoForm').addEventListener('submit', async e =>
         imageDataUrl
       }
     });
+    state.capturedDataUrl = null;
     fileInput.value = '';
     document.getElementById('photoCaptionInput').value = '';
+    document.getElementById('capturedPhotoPreviewWrap').classList.add('hidden');
     await refreshDashboard();
     showToast('📸 ¡Foto de proceso guardada!');
   } catch (err) {

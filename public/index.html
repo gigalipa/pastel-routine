@@ -162,13 +162,23 @@
         <div class="card">
           <h3>➕ Subir Nueva Foto de Avance</h3>
           <p class="muted" style="margin-bottom: 12px;">
-            La foto se optimiza automáticamente antes de guardarse en Neon Object Storage.
+            Usa la cámara con guías biomecánicas para alinear el rostro/postura o elige una imagen de tu galería.
           </p>
           <form id="uploadPhotoForm">
-            <div class="input-group">
-              <label for="photoFileInput">Seleccionar o tomar foto</label>
-              <input id="photoFileInput" type="file" accept="image/*" required />
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom: 12px;">
+              <button id="openGuidedCameraBtn" type="button" class="btn">
+                📷 Cámara con Guías
+              </button>
+              <label for="photoFileInput" class="btn btn-secondary" style="cursor:pointer; margin:0; text-align:center;">
+                🖼️ Elegir del Álbum
+              </label>
+              <input id="photoFileInput" type="file" accept="image/*" class="hidden" />
             </div>
+
+            <div id="capturedPhotoPreviewWrap" class="capture-preview-wrap hidden">
+              <img id="capturedPhotoPreviewImg" src="" alt="Previsualización" />
+            </div>
+
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
               <div class="input-group">
                 <label for="photoAngleSelect">Ángulo</label>
@@ -297,6 +307,48 @@
           </button>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- Guided Camera Modal -->
+  <div id="cameraModal" class="modal-backdrop hidden">
+    <div class="modal-card" style="max-width:480px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+        <h3>📷 Cámara con Guías Biomecánicas</h3>
+        <button id="closeCameraModalBtn" class="btn btn-secondary btn-sm" type="button">✕</button>
+      </div>
+
+      <div class="week-tabs" id="cameraAngleTabs" style="margin-bottom:8px;">
+        <button class="pill-tab active" data-cam-angle="front" type="button">Frente</button>
+        <button class="pill-tab" data-cam-angle="profile_right" type="button">Perfil Der.</button>
+        <button class="pill-tab" data-cam-angle="profile_left" type="button">Perfil Izq.</button>
+        <button class="pill-tab" data-cam-angle="posture" type="button">Postura</button>
+      </div>
+
+      <div id="cameraGuideTip" class="camera-tip-banner"></div>
+
+      <div class="camera-stage">
+        <video id="cameraVideoEl" autoplay playsinline muted class="mirrored"></video>
+        <img id="cameraGhostImg" class="ghost-img hidden" alt="Calco anterior" />
+        <div id="cameraGuideOverlay" class="guide-overlay"></div>
+        <div id="cameraCountdownEl" class="camera-countdown hidden">3</div>
+      </div>
+
+      <div style="display:flex; gap:8px; justify-content:space-between; flex-wrap:wrap; margin-bottom:10px;">
+        <button id="toggleCameraFacingBtn" class="btn btn-secondary btn-sm" type="button">
+          🔄 Girar Lente
+        </button>
+        <button id="toggleCameraTimerBtn" class="btn btn-secondary btn-sm" type="button">
+          ⏱️ Temp: 0s
+        </button>
+        <button id="toggleCameraGhostBtn" class="btn btn-secondary btn-sm" type="button">
+          👻 Calco Día 1: Off
+        </button>
+      </div>
+
+      <button id="snapCameraPhotoBtn" class="btn btn-peach" style="width:100%; font-size:1rem; padding:12px;" type="button">
+        📸 Capturar Foto Alineada
+      </button>
     </div>
   </div>
 

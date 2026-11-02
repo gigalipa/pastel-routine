@@ -28,4 +28,7 @@ test('PWA static assets, manifest, Service Worker, and UI structure are served p
   assert.equal(appJsRes.status, 200);
   const appJsText = await appJsRes.text();
   assert.ok(appJsText.includes('function escapeHtml('));
+  assert.ok(appJsText.includes('function getCameraGuideSvg('));
+  assert.ok(html.includes('id="cameraModal"'));
+  assert.ok(html.includes('id="openGuidedCameraBtn"'));
 });
