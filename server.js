@@ -97,6 +97,7 @@ async function createAppServer(options = {}) {
   );
 
   async function notifyUserDevices(userId, payloadObj) {
+    await db.createNotification(userId, payloadObj);
     const subs = await db.getPushSubscriptionsForUser(userId);
     const payloadStr = JSON.stringify(payloadObj);
     let sent = 0;
@@ -202,7 +203,8 @@ async function createAppServer(options = {}) {
             const me = await db.getUserById(auth.id);
             await notifyUserDevices(partner.id, {
               title: '🤝 ¡Nuevo vínculo en Pastel Routine!',
-              body: `${me.displayName} se ha vinculado contigo para compartir su progreso.`
+              body: `${me.displayName} se ha vinculado contigo para compartir su progreso.`,
+              targetTab: 'Partners'
             });
             return sendJson(res, 200, { partner });
           } catch (err) {
@@ -237,12 +239,23 @@ async function createAppServer(options = {}) {
             const me = await db.getUserById(auth.id);
             await notifyUserDevices(body.toUserId, {
               title: `💌 Ánimo de ${me.displayName}`,
-              body: cheer.message
+              body: cheer.message,
+              targetTab: 'Partners'
             });
             return sendJson(res, 200, cheer);
           } catch (err) {
             return sendJson(res, err.statusCode || 400, { error: err.message });
           }
+        }
+
+        if (pathname === '/api/notifications' && req.method === 'GET') {
+          const data = await db.getUserNotifications(auth.id, 25);
+          return sendJson(res, 200, data);
+        }
+
+        if (pathname === '/api/notifications/read' && req.method === 'POST') {
+          const data = await db.markNotificationsRead(auth.id);
+          return sendJson(res, 200, data);
         }
 
         if (pathname === '/api/push/subscribe' && req.method === 'POST') {
@@ -261,7 +274,8 @@ async function createAppServer(options = {}) {
           const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
           const sent = await notifyUserDevices(auth.id, {
             title: `🌿 Recordatorio Semana ${me.currentWeek} — Pastel Routine`,
-            body: randomQuote.text
+            body: randomQuote.text,
+            targetTab: 'Today'
           });
           return sendJson(res, 200, { sent, quote: randomQuote });
         }
@@ -288,17 +302,29 @@ async function createAppServer(options = {}) {
           const body = await readJsonBody(req);
           try {
             const stored = await storePhotoObject({ userId: auth.id, dataUrl: body.imageDataUrl });
+            const sharedWithPartner = body.sharedWithPartner !== false;
             const saved = await db.addProgressPhoto(auth.id, {
               angle: body.angle,
               weekPhase: body.weekPhase,
               caption: body.caption,
-              sharedWithPartner: body.sharedWithPartner !== false,
+              sharedWithPartner,
               takenAt: body.takenAt,
               storageType: stored.storageType,
               objectKey: stored.objectKey,
               mimeType: stored.mimeType,
               dataUrl: stored.dataUrl
             });
+            if (sharedWithPartner) {
+              const me = await db.getUserById(auth.id);
+              const partnerIds = await db.getPartnerIds(auth.id);
+              for (const pid of partnerIds) {
+                await notifyUserDevices(pid, {
+                  title: `📸 Nueva foto de ${me.displayName}`,
+                  body: `Compartió un avance en la Semana ${saved.weekPhase}.`,
+                  targetTab: 'Photos'
+                });
+              }
+            }
             return sendJson(res, 200, saved);
           } catch (err) {
             return sendJson(res, 400, { error: err.message });
@@ -345,7 +371,8 @@ async function createAppServer(options = {}) {
               const me = await db.getUserById(auth.id);
               await notifyUserDevices(resLike.ownerUserId, {
                 title: `❤️ A ${me.displayName} le gustó tu foto`,
-                body: `${me.displayName} reaccionó a tu foto de proceso (Semana ${resLike.weekPhase}).`
+                body: `${me.displayName} reaccionó a tu foto de proceso (Semana ${resLike.weekPhase}).`,
+                targetTab: 'Photos'
               });
             }
             return sendJson(res, 200, resLike);
@@ -362,7 +389,8 @@ async function createAppServer(options = {}) {
             if (resComment.ownerUserId !== auth.id) {
               await notifyUserDevices(resComment.ownerUserId, {
                 title: `💬 ${resComment.userName} comentó en tu foto`,
-                body: resComment.comment
+                body: resComment.comment,
+                targetTab: 'Photos'
               });
             }
             return sendJson(res, 200, resComment);

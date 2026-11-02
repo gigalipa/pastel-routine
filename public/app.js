@@ -108,11 +108,70 @@ function renderAuth() {
   document.getElementById('userHeaderInfo').classList.add('hidden');
 }
 
+function updateUnreadBadge(unreadCount) {
+  const badge = document.getElementById('notifUnreadBadge');
+  if (!badge) return;
+  const count = Number(unreadCount || 0);
+  if (count > 0) {
+    badge.textContent = count > 99 ? '99+' : String(count);
+    badge.classList.remove('hidden');
+  } else {
+    badge.classList.add('hidden');
+  }
+}
+
+function renderNotificationsList(notifications = []) {
+  const container = document.getElementById('notificationsListContainer');
+  if (!container) return;
+  if (!notifications || notifications.length === 0) {
+    container.innerHTML = `<p class="muted" style="text-align:center; padding:18px 0;">Aún no tienes notificaciones registradas.</p>`;
+    return;
+  }
+  const TAB_LABELS = {
+    Today: 'Ir a Hoy',
+    Library: 'Ir a Biblioteca',
+    Partners: 'Ir a Compañeros',
+    Photos: 'Ir a Proceso (Fotos)',
+    Settings: 'Ir a Ajustes'
+  };
+  container.innerHTML = notifications.map(n => `
+    <div class="notif-item ${n.isRead ? '' : 'unread'}" onclick="openNotificationTarget('${escapeHtml(n.targetTab || 'Today')}')">
+      <div class="notif-item-header">
+        <strong>${escapeHtml(n.title)}</strong>
+        ${!n.isRead ? '<span class="notif-new-pill">Nuevo</span>' : ''}
+      </div>
+      <div class="notif-item-body">${escapeHtml(n.body)}</div>
+      <div class="notif-item-footer">
+        <span>${new Date(n.createdAt).toLocaleString()}</span>
+        <span class="notif-link">${TAB_LABELS[n.targetTab] || 'Ver'} →</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+function switchToTab(tab) {
+  const validTabs = ['Today', 'Library', 'Partners', 'Photos', 'Settings'];
+  const target = validTabs.includes(tab) ? tab : 'Today';
+  document.querySelectorAll('#bottomNav .nav-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.tab === target);
+  });
+  validTabs.forEach(name => {
+    document.getElementById(`view${name}`).classList.toggle('hidden', name !== target);
+  });
+}
+
+window.openNotificationTarget = async function(targetTab) {
+  document.getElementById('notificationsModal').classList.add('hidden');
+  switchToTab(targetTab);
+  await refreshDashboard();
+};
+
 function renderAll() {
   if (!state.dashboard || !state.catalog) return;
-  const { me, partners, cheers, quotes } = state.dashboard;
+  const { me, partners, cheers, quotes, unreadNotificationsCount } = state.dashboard;
 
   document.getElementById('streakBadge').textContent = `🔥 ${me.streak} ${me.streak === 1 ? 'día' : 'días'}`;
+  updateUnreadBadge(unreadNotificationsCount);
   document.getElementById('todayDateLabel').textContent = `Hoy: ${me.todayDate}`;
 
   // Quotes
@@ -965,12 +1024,43 @@ document.getElementById('modalToggleCompleteBtn').addEventListener('click', asyn
 
 document.querySelectorAll('#bottomNav .nav-btn').forEach(btn => {
   btn.addEventListener('click', () => {
-    const tab = btn.dataset.tab;
-    document.querySelectorAll('#bottomNav .nav-btn').forEach(b => b.classList.toggle('active', b === btn));
-    ['Today', 'Library', 'Partners', 'Photos', 'Settings'].forEach(name => {
-      document.getElementById(`view${name}`).classList.toggle('hidden', name !== tab);
-    });
+    switchToTab(btn.dataset.tab);
   });
+});
+
+document.getElementById('openNotificationsBtn').addEventListener('click', async () => {
+  document.getElementById('notificationsModal').classList.remove('hidden');
+  try {
+    const data = await api('/api/notifications');
+    renderNotificationsList(data.notifications);
+    if (data.unreadCount > 0) {
+      await api('/api/notifications/read', { method: 'POST' });
+      updateUnreadBadge(0);
+    }
+  } catch (err) {
+    showToast(err.message);
+  }
+});
+
+document.getElementById('closeNotificationsModalBtn').addEventListener('click', () => {
+  document.getElementById('notificationsModal').classList.add('hidden');
+});
+
+async function pollUnreadNotifications() {
+  if (!state.token || document.hidden) return;
+  try {
+    const data = await api('/api/notifications');
+    updateUnreadBadge(data.unreadCount);
+  } catch {
+    // Ignore background polling errors
+  }
+}
+
+setInterval(pollUnreadNotifications, 45000);
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && state.token) {
+    pollUnreadNotifications();
+  }
 });
 
 document.querySelectorAll('#compareAngleTabs .pill-tab').forEach(btn => {

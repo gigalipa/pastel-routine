@@ -85,3 +85,69 @@ test('Marking a video as seen from the modal also marks its corresponding daily 
   assert.equal(dash.me.videoProgressMap['e4-p6'].notes, 'Visto completo (45 min)');
   assert.ok(dash.me.todayBlocks.includes('w1-map'), 'Daily checklist item w1-map should be automatically checked for today');
 });
+
+test('In-app notifications inbox records partner links, cheers, photo likes/comments, and marks as read', async (t) => {
+  const app = await createAppServer({ sqlitePath: ':memory:' });
+  const port = await app.start(0);
+  const baseUrl = `http://127.0.0.1:${port}`;
+  t.after(() => app.close());
+
+  const r1 = await fetch(`${baseUrl}/api/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: 'ana@notif.com', displayName: 'Ana', password: 'secret123' })
+  });
+  const u1 = await r1.json();
+
+  const r2 = await fetch(`${baseUrl}/api/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: 'luis@notif.com', displayName: 'Luis', password: 'secret123' })
+  });
+  const u2 = await r2.json();
+
+  // Luis links with Ana
+  const linkRes = await fetch(`${baseUrl}/api/partners/connect`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${u2.token}` },
+    body: JSON.stringify({ inviteCode: u1.user.inviteCode })
+  });
+  assert.equal(linkRes.status, 200);
+
+  // Luis sends a cheer to Ana
+  const cheerRes = await fetch(`${baseUrl}/api/cheers`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${u2.token}` },
+    body: JSON.stringify({ toUserId: u1.user.id, message: '¡Vamos Ana!' })
+  });
+  assert.equal(cheerRes.status, 200);
+
+  // Ana checks her notifications (even without Web Push enabled)
+  const notifRes = await fetch(`${baseUrl}/api/notifications`, {
+    headers: { Authorization: `Bearer ${u1.token}` }
+  });
+  assert.equal(notifRes.status, 200);
+  const notifData = await notifRes.json();
+  assert.equal(notifData.unreadCount, 2);
+  assert.equal(notifData.notifications.length, 2);
+  assert.equal(notifData.notifications[0].isRead, false);
+  assert.match(notifData.notifications[0].title, /Ánimo de Luis/);
+  assert.equal(notifData.notifications[0].targetTab, 'Partners');
+
+  // Ana marks notifications as read
+  const readRes = await fetch(`${baseUrl}/api/notifications/read`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${u1.token}` }
+  });
+  assert.equal(readRes.status, 200);
+  const readData = await readRes.json();
+  assert.equal(readData.unreadCount, 0);
+
+  // Verify GET /api/notifications now shows unreadCount 0 and isRead true
+  const afterRes = await fetch(`${baseUrl}/api/notifications`, {
+    headers: { Authorization: `Bearer ${u1.token}` }
+  });
+  const afterData = await afterRes.json();
+  assert.equal(afterData.unreadCount, 0);
+  assert.equal(afterData.notifications[0].isRead, true);
+});

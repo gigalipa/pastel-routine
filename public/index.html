@@ -19,8 +19,12 @@
         <img src="/icon.svg" alt="Pastel Routine" />
         <span>Pastel Routine</span>
       </div>
-      <div id="userHeaderInfo" class="hidden">
+      <div id="userHeaderInfo" class="header-actions hidden">
         <span id="streakBadge" class="streak-pill">🔥 0 días</span>
+        <button id="openNotificationsBtn" class="notif-bell-btn" type="button" title="Notificaciones">
+          🔔
+          <span id="notifUnreadBadge" class="notif-badge hidden">0</span>
+        </button>
       </div>
     </div>
   </header>
@@ -349,6 +353,20 @@
       <button id="snapCameraPhotoBtn" class="btn btn-peach" style="width:100%; font-size:1rem; padding:12px;" type="button">
         📸 Capturar Foto Alineada
       </button>
+    </div>
+  </div>
+
+  <!-- Notifications Inbox Modal -->
+  <div id="notificationsModal" class="modal-backdrop hidden">
+    <div class="modal-card" style="max-width:460px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <h3>🔔 Tus Notificaciones</h3>
+        <button id="closeNotificationsModalBtn" class="btn btn-secondary btn-sm" type="button">✕</button>
+      </div>
+      <p class="muted" style="font-size:0.8rem; margin-bottom:10px;">
+        Aquí quedan registrados los likes, comentarios, mensajes de ánimo y avisos de tus compañeros aunque tengas silenciadas las notificaciones del dispositivo.
+      </p>
+      <div id="notificationsListContainer" class="notif-list"></div>
     </div>
   </div>
 
