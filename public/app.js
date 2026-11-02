@@ -469,6 +469,7 @@ function renderTodayView() {
           <div>
             <span class="badge">⏱ ${item.duration}</span>
             ${video ? `<span class="badge">${video.focusTitle}</span>` : ''}
+            ${video ? `<span class="badge badge-pos">📍 Posición ${video.positionLabel}</span>` : ''}
           </div>
         </div>
         ${video ? `<button class="btn btn-secondary btn-sm" type="button" onclick="openVideoModal('${video.id}', '${item.id}')">▶ Ver video</button>` : ''}
@@ -495,9 +496,10 @@ function renderVideoRow(v) {
         ✓
       </button>
       <div class="item-body" onclick="openVideoModal('${v.id}')" style="cursor:pointer;">
-        <div class="item-title">${v.positionLabel} — ${v.title}</div>
+        <div class="item-title">Posición ${v.positionLabel} — ${v.title}</div>
         <p class="muted" style="font-size:0.84rem; margin-bottom:4px;">${v.description}</p>
         <div>
+          <span class="badge">${v.focusTitle}</span>
           <span class="badge">${v.category}</span>
           ${v.recommendedWeek ? `<span class="badge badge-week">Semana ${v.recommendedWeek}</span>` : ''}
           ${prog && prog.notes ? `<span class="badge">📝 Con nota</span>` : ''}

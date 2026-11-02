@@ -397,6 +397,11 @@ h3 {
   color: #9e4b3b;
 }
 
+.badge-pos {
+  background: var(--sky-light);
+  color: #2f5b75;
+}
+
 .progress-bar-wrap {
   background: var(--surface-soft);
   height: 10px;
