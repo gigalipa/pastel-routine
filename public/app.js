@@ -10,7 +10,9 @@ const state = {
   activeWeek: 1,
   activeFocus: 1,
   quoteIndex: 0,
-  modalVideoId: null
+  modalVideoId: null,
+  modalBlockId: null,
+  modalKeepAliveTimer: null
 };
 
 function showToast(msg) {
@@ -303,7 +305,7 @@ function renderTodayView() {
             ${video ? `<span class="badge">${video.focusTitle}</span>` : ''}
           </div>
         </div>
-        ${video ? `<button class="btn btn-secondary btn-sm" type="button" onclick="openVideoModal('${video.id}')">▶ Ver video</button>` : ''}
+        ${video ? `<button class="btn btn-secondary btn-sm" type="button" onclick="openVideoModal('${video.id}', '${item.id}')">▶ Ver video</button>` : ''}
       </div>
     `;
   }).join('');
@@ -519,7 +521,12 @@ window.toggleVideoQuick = async function(videoId, currentlyDone) {
   try {
     await api('/api/progress/video', {
       method: 'POST',
-      body: { videoId, notes: currentlyDone ? null : '' }
+      body: {
+        videoId,
+        notes: currentlyDone ? null : '',
+        date: getLocalToday(),
+        weekPhase: state.activeWeek
+      }
     });
     await refreshDashboard();
     showToast(currentlyDone ? 'Video desmarcado' : '✓ Video marcado como aprendido');
@@ -528,10 +535,18 @@ window.toggleVideoQuick = async function(videoId, currentlyDone) {
   }
 };
 
-window.openVideoModal = function(videoId) {
+function stopModalKeepAlive() {
+  if (state.modalKeepAliveTimer) {
+    clearInterval(state.modalKeepAliveTimer);
+    state.modalKeepAliveTimer = null;
+  }
+}
+
+window.openVideoModal = function(videoId, blockId = null) {
   const video = state.catalog.videos.find(v => v.id === videoId);
   if (!video) return;
   state.modalVideoId = videoId;
+  state.modalBlockId = blockId;
 
   const prog = state.dashboard.me.videoProgressMap[videoId];
   document.getElementById('modalVideoBadge').textContent = `${video.focusTitle} · ${video.positionLabel}`;
@@ -541,7 +556,13 @@ window.openVideoModal = function(videoId) {
   document.getElementById('modalYoutubeLink').href = video.url;
 
   const btn = document.getElementById('modalToggleCompleteBtn');
-  btn.textContent = prog ? '💾 Guardar nota / Desmarcar' : '✓ Marcar como visto y guardar nota';
+  btn.disabled = false;
+  btn.textContent = prog ? '✓ Guardar nota y marcar práctica de hoy' : '✓ Marcar como visto y guardar nota';
+
+  const unmarkBtn = document.getElementById('modalUnmarkBtn');
+  if (unmarkBtn) {
+    unmarkBtn.classList.toggle('hidden', !prog);
+  }
 
   const frame = document.getElementById('modalVideoFrame');
   if (video.youtubeId) {
@@ -551,6 +572,12 @@ window.openVideoModal = function(videoId) {
   }
 
   document.getElementById('videoModal').classList.remove('hidden');
+
+  // Keep Render & Neon awake during long videos (e.g. 45-min master guide)
+  stopModalKeepAlive();
+  state.modalKeepAliveTimer = setInterval(() => {
+    fetch('/api/health').catch(() => {});
+  }, 3 * 60 * 1000);
 };
 
 window.quickCheer = async function(partnerId, name) {
@@ -741,28 +768,61 @@ document.getElementById('logoutBtn').addEventListener('click', () => {
 });
 
 document.getElementById('closeModalBtn').addEventListener('click', () => {
+  stopModalKeepAlive();
   document.getElementById('modalVideoFrame').innerHTML = '';
   document.getElementById('videoModal').classList.add('hidden');
 });
 
+document.getElementById('modalUnmarkBtn')?.addEventListener('click', async () => {
+  if (!state.modalVideoId) return;
+  const unmarkBtn = document.getElementById('modalUnmarkBtn');
+  unmarkBtn.disabled = true;
+  try {
+    await api('/api/progress/video', {
+      method: 'POST',
+      body: { videoId: state.modalVideoId, notes: null }
+    });
+    stopModalKeepAlive();
+    document.getElementById('modalVideoFrame').innerHTML = '';
+    document.getElementById('videoModal').classList.add('hidden');
+    await refreshDashboard();
+    showToast('Video desmarcado de la biblioteca');
+  } catch (err) {
+    showToast(err.message);
+  } finally {
+    unmarkBtn.disabled = false;
+  }
+});
+
 document.getElementById('modalToggleCompleteBtn').addEventListener('click', async () => {
   if (!state.modalVideoId) return;
+  const btn = document.getElementById('modalToggleCompleteBtn');
+  const origText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '⏳ Guardando...';
+
   const notes = document.getElementById('modalVideoNotes').value.trim();
-  const isAlreadyDone = Boolean(state.dashboard.me.videoProgressMap[state.modalVideoId]);
   try {
     await api('/api/progress/video', {
       method: 'POST',
       body: {
         videoId: state.modalVideoId,
-        notes: isAlreadyDone && !notes ? null : notes
+        notes,
+        date: getLocalToday(),
+        weekPhase: state.activeWeek,
+        blockId: state.modalBlockId
       }
     });
+    stopModalKeepAlive();
     document.getElementById('modalVideoFrame').innerHTML = '';
     document.getElementById('videoModal').classList.add('hidden');
     await refreshDashboard();
-    showToast('Progreso actualizado');
+    showToast('✓ Video y práctica de hoy guardados');
   } catch (err) {
     showToast(err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = origText;
   }
 });
 

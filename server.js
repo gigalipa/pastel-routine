@@ -213,7 +213,11 @@ async function createAppServer(options = {}) {
         if (pathname === '/api/progress/video' && req.method === 'POST') {
           const body = await readJsonBody(req);
           try {
-            const result = await db.toggleVideoProgress(auth.id, body.videoId, body.notes);
+            const result = await db.toggleVideoProgress(auth.id, body.videoId, body.notes, {
+              date: body.date,
+              weekPhase: body.weekPhase,
+              blockId: body.blockId
+            });
             return sendJson(res, 200, result);
           } catch (err) {
             return sendJson(res, err.statusCode || 400, { error: err.message });

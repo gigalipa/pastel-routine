@@ -284,13 +284,18 @@
         <textarea id="modalVideoNotes" rows="2" placeholder="Ej. Sentí alivio inmediato en el cuello al respirar hacia atrás..."></textarea>
       </div>
 
-      <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:space-between;">
+      <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:space-between; align-items:center;">
         <a id="modalYoutubeLink" href="#" target="_blank" rel="noopener" class="btn btn-secondary btn-sm">
           Abrir en YouTube ↗
         </a>
-        <button id="modalToggleCompleteBtn" class="btn" type="button">
-          ✓ Marcar como aprendido
-        </button>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button id="modalUnmarkBtn" class="btn btn-secondary btn-sm hidden" type="button" style="color:#a64141;">
+            Desmarcar
+          </button>
+          <button id="modalToggleCompleteBtn" class="btn" type="button">
+            ✓ Marcar como visto y guardar nota
+          </button>
+        </div>
       </div>
     </div>
   </div>
