@@ -102,7 +102,51 @@ test('Progress photos upload, partner visibility filtering, before/after metadat
   const imgStrangerRes = await fetch(`${baseUrl}/api/photos/${sharedPhoto.id}/image?token=${encodeURIComponent(u3.token)}`);
   assert.equal(imgStrangerRes.status, 403);
 
-  // 7. Carlos deletes his private photo
+  // 7. Ana likes and comments on Carlos's shared photo
+  const likeRes = await fetch(`${baseUrl}/api/photos/${sharedPhoto.id}/like`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${u2.token}` }
+  });
+  assert.equal(likeRes.status, 200);
+  const likeData = await likeRes.json();
+  assert.equal(likeData.liked, true);
+  assert.equal(likeData.likesCount, 1);
+
+  const commentRes = await fetch(`${baseUrl}/api/photos/${sharedPhoto.id}/comments`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${u2.token}` },
+    body: JSON.stringify({ comment: '¡Se nota muchísimo el cambio en el cuello!' })
+  });
+  assert.equal(commentRes.status, 200);
+  const commentData = await commentRes.json();
+  assert.equal(commentData.userName, 'Ana');
+  assert.equal(commentData.comment, '¡Se nota muchísimo el cambio en el cuello!');
+
+  // Unlinked user (u3) cannot like or comment on Carlos's shared photo
+  const strangerLikeRes = await fetch(`${baseUrl}/api/photos/${sharedPhoto.id}/like`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${u3.token}` }
+  });
+  assert.equal(strangerLikeRes.status, 403);
+
+  // Ana cannot like Carlos's private photo
+  const privLikeRes = await fetch(`${baseUrl}/api/photos/${privatePhoto.id}/like`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${u2.token}` }
+  });
+  assert.equal(privLikeRes.status, 403);
+
+  // Verify Carlos sees Ana's like and comment on his photo
+  const listOwnAfter = await (await fetch(`${baseUrl}/api/photos`, {
+    headers: { Authorization: `Bearer ${u1.token}` }
+  })).json();
+  const updatedShared = listOwnAfter.myPhotos.find(p => p.id === sharedPhoto.id);
+  assert.equal(updatedShared.likesCount, 1);
+  assert.deepEqual(updatedShared.likedByNames, ['Ana']);
+  assert.equal(updatedShared.comments.length, 1);
+  assert.equal(updatedShared.comments[0].comment, '¡Se nota muchísimo el cambio en el cuello!');
+
+  // 8. Carlos deletes his private photo
   const delRes = await fetch(`${baseUrl}/api/photos/${privatePhoto.id}`, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${u1.token}` }

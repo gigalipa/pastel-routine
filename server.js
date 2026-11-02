@@ -337,6 +337,40 @@ async function createAppServer(options = {}) {
           }
         }
 
+        const photoLikeMatch = pathname.match(/^\/api\/photos\/(\d+)\/like$/);
+        if (photoLikeMatch && req.method === 'POST') {
+          try {
+            const resLike = await db.togglePhotoLike(Number(photoLikeMatch[1]), auth.id);
+            if (resLike.liked && resLike.ownerUserId !== auth.id) {
+              const me = await db.getUserById(auth.id);
+              await notifyUserDevices(resLike.ownerUserId, {
+                title: `❤️ A ${me.displayName} le gustó tu foto`,
+                body: `${me.displayName} reaccionó a tu foto de proceso (Semana ${resLike.weekPhase}).`
+              });
+            }
+            return sendJson(res, 200, resLike);
+          } catch (err) {
+            return sendJson(res, err.statusCode || 400, { error: err.message });
+          }
+        }
+
+        const photoCommentMatch = pathname.match(/^\/api\/photos\/(\d+)\/comments$/);
+        if (photoCommentMatch && req.method === 'POST') {
+          const body = await readJsonBody(req);
+          try {
+            const resComment = await db.addPhotoComment(Number(photoCommentMatch[1]), auth.id, body.comment);
+            if (resComment.ownerUserId !== auth.id) {
+              await notifyUserDevices(resComment.ownerUserId, {
+                title: `💬 ${resComment.userName} comentó en tu foto`,
+                body: resComment.comment
+              });
+            }
+            return sendJson(res, 200, resComment);
+          } catch (err) {
+            return sendJson(res, err.statusCode || 400, { error: err.message });
+          }
+        }
+
         return sendJson(res, 404, { error: 'Endpoint no encontrado' });
       }
 

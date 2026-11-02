@@ -232,6 +232,36 @@ function photoImgUrl(photoId) {
   return `/api/photos/${Number(photoId)}/image?token=${encodeURIComponent(state.token || '')}`;
 }
 
+function renderPhotoReactions(p) {
+  const likesCount = Number(p.likesCount || 0);
+  const likedByMe = Boolean(p.likedByMe);
+  const likedNames = Array.isArray(p.likedByNames) && p.likedByNames.length > 0
+    ? `<span class="photo-liked-names" title="${escapeHtml(p.likedByNames.join(', '))}">por ${escapeHtml(p.likedByNames.join(', '))}</span>`
+    : '';
+  const comments = Array.isArray(p.comments) ? p.comments : [];
+  const commentsHtml = comments.length > 0
+    ? `<div class="photo-comments-list">${comments.map(c =>
+        `<div class="photo-comment-item"><strong>${escapeHtml(c.userName)}:</strong> ${escapeHtml(c.comment)}</div>`
+      ).join('')}</div>`
+    : '';
+
+  return `
+    <div class="photo-reactions">
+      <div class="photo-like-row">
+        <button class="like-btn ${likedByMe ? 'liked' : ''}" type="button" onclick="toggleLikePhoto(${Number(p.id)})">
+          ${likedByMe ? '❤️' : '🤍'} ${likesCount}
+        </button>
+        ${likedNames}
+      </div>
+      ${commentsHtml}
+      <form class="photo-comment-form" onsubmit="submitPhotoComment(event, ${Number(p.id)})">
+        <input type="text" name="comment" placeholder="Dejar un comentario..." maxlength="280" required />
+        <button class="btn btn-sm" type="submit" title="Enviar comentario">💬</button>
+      </form>
+    </div>
+  `;
+}
+
 function renderPhotosView() {
   const { myPhotos, partnerPhotos } = state.photos || { myPhotos: [], partnerPhotos: [] };
 
@@ -287,7 +317,8 @@ function renderPhotosView() {
           <strong>${ANGLE_LABELS[p.angle] || p.angle} · Sem ${p.weekPhase}</strong>
           <div class="muted" style="font-size:0.75rem;">${p.takenAt} ${p.sharedWithPartner ? '· 👁️ Compartida' : '· 🔒 Privada'}</div>
           ${p.caption ? `<div style="margin-top:4px;">${escapeHtml(p.caption)}</div>` : ''}
-          <button class="btn btn-secondary btn-sm" style="margin-top:6px; width:100%; color:#a64141;" type="button" onclick="removePhoto(${p.id})">
+          ${renderPhotoReactions(p)}
+          <button class="btn btn-secondary btn-sm" style="margin-top:8px; width:100%; color:#a64141;" type="button" onclick="removePhoto(${p.id})">
             🗑 Eliminar
           </button>
         </div>
@@ -306,9 +337,7 @@ function renderPhotosView() {
           <strong>${escapeHtml(p.userName)} · Sem ${p.weekPhase}</strong>
           <div class="muted" style="font-size:0.75rem;">${ANGLE_LABELS[p.angle] || p.angle} · ${p.takenAt}</div>
           ${p.caption ? `<div style="margin-top:4px;">${escapeHtml(p.caption)}</div>` : ''}
-          <button class="btn btn-sm" style="margin-top:6px; width:100%;" type="button" onclick="sendCustomCheer(${p.userId}, '📸 ¡Increíble tu foto de avance de la Semana ${p.weekPhase}!')">
-            👏 Felicitar
-          </button>
+          ${renderPhotoReactions(p)}
         </div>
       </div>
     `).join('');
@@ -578,6 +607,36 @@ window.removePhoto = async function(photoId) {
     await api(`/api/photos/${Number(photoId)}`, { method: 'DELETE' });
     await refreshDashboard();
     showToast('🗑 Foto eliminada');
+  } catch (err) {
+    showToast(err.message);
+  }
+};
+
+window.toggleLikePhoto = async function(photoId) {
+  try {
+    await api(`/api/photos/${Number(photoId)}/like`, { method: 'POST' });
+    state.photos = await api('/api/photos');
+    renderPhotosView();
+  } catch (err) {
+    showToast(err.message);
+  }
+};
+
+window.submitPhotoComment = async function(e, photoId) {
+  e.preventDefault();
+  const form = e.target;
+  const input = form.querySelector('input[name="comment"]');
+  const comment = input ? input.value.trim() : '';
+  if (!comment) return;
+  try {
+    await api(`/api/photos/${Number(photoId)}/comments`, {
+      method: 'POST',
+      body: { comment }
+    });
+    if (input) input.value = '';
+    state.photos = await api('/api/photos');
+    renderPhotosView();
+    showToast('💬 Comentario publicado');
   } catch (err) {
     showToast(err.message);
   }
