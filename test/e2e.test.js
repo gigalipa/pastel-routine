@@ -31,4 +31,9 @@ test('PWA static assets, manifest, Service Worker, and UI structure are served p
   assert.ok(appJsText.includes('function getCameraGuideSvg('));
   assert.ok(html.includes('id="cameraModal"'));
   assert.ok(html.includes('id="openGuidedCameraBtn"'));
+  assert.ok(html.includes('id="filterFocusSelect"'));
+  assert.ok(html.includes('id="filterCategorySelect"'));
+  assert.ok(html.includes('id="filterOriginSelect"'));
+  assert.ok(html.includes('id="filterStatusSelect"'));
+  assert.ok(html.includes('id="clearLibraryFiltersBtn"'));
 });

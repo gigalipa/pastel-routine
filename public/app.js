@@ -8,7 +8,7 @@ const state = {
   beforePhotoId: null,
   afterPhotoId: null,
   activeWeek: 1,
-  activeFocus: 1,
+  activeFocus: 'all',
   quoteIndex: 0,
   modalVideoId: null,
   modalBlockId: null,
@@ -518,35 +518,84 @@ function renderVideoRow(v) {
 
 function renderLibraryView() {
   const { me } = state.dashboard;
-  const pctGlobal = Math.round((me.completedVideosCount / me.totalVideosCount) * 100) || 0;
+  const totalVids = me.totalVideosCount || state.catalog.videos.length;
+  const pctGlobal = Math.round((me.completedVideosCount / totalVids) * 100) || 0;
   document.getElementById('globalProgressSummary').innerHTML = `
     <div style="display:flex; justify-content:space-between; font-size:0.88rem; font-weight:600;">
       <span>Progreso Total del Catálogo</span>
-      <span>${me.completedVideosCount} / ${me.totalVideosCount} videos (${pctGlobal}%)</span>
+      <span>${me.completedVideosCount} / ${totalVids} videos (${pctGlobal}%)</span>
     </div>
     <div class="progress-bar-wrap">
       <div class="progress-bar-fill" style="width:${pctGlobal}%"></div>
     </div>
   `;
 
+  // Focus pills
   const focusTabsEl = document.getElementById('focusSelectorTabs');
-  focusTabsEl.innerHTML = state.catalog.focuses.map(f => {
+  const isAllFocus = state.activeFocus === 'all';
+  const pillsHtml = [
+    `<button class="pill-tab ${isAllFocus ? 'active' : ''}" type="button" onclick="selectFocus('all')">
+      🌟 Todos (${me.completedVideosCount}/${totalVids})
+    </button>`
+  ].concat(state.catalog.focuses.map(f => {
     const fp = me.focusProgress.find(x => x.focusId === f.id) || { completed: 0, total: 0 };
     return `
-      <button class="pill-tab ${state.activeFocus === f.id ? 'active' : ''}" type="button" onclick="selectFocus(${f.id})">
+      <button class="pill-tab ${Number(state.activeFocus) === f.id ? 'active' : ''}" type="button" onclick="selectFocus(${f.id})">
         ${f.icon} ${f.title} (${fp.completed}/${fp.total})
       </button>
     `;
-  }).join('');
+  })).join('');
+  focusTabsEl.innerHTML = pillsHtml;
 
-  const query = (document.getElementById('searchVideosInput').value || '').trim().toLowerCase();
-  const statusFilter = document.getElementById('filterStatusSelect').value;
+  // Populate Categories in Select if empty
+  const catSelect = document.getElementById('filterCategorySelect');
+  if (catSelect && catSelect.options.length <= 1) {
+    const categories = Array.from(new Set(state.catalog.videos.map(v => v.category).filter(Boolean))).sort();
+    catSelect.innerHTML = '<option value="all">Todas las categorías</option>' +
+      categories.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+  }
+
+  // Populate Focus in Select if empty or sync
+  const focusSelect = document.getElementById('filterFocusSelect');
+  if (focusSelect && focusSelect.options.length <= 1) {
+    focusSelect.innerHTML = '<option value="all">Todos los enfoques</option>' +
+      state.catalog.focuses.map(f => `<option value="${f.id}">${f.icon} ${escapeHtml(f.title)}</option>`).join('');
+  }
+  if (focusSelect) {
+    focusSelect.value = String(state.activeFocus);
+  }
+
+  const query = (document.getElementById('searchVideosInput')?.value || '').trim().toLowerCase();
+  const focusFilter = state.activeFocus;
+  const categoryFilter = document.getElementById('filterCategorySelect')?.value || 'all';
+  const originFilter = document.getElementById('filterOriginSelect')?.value || 'all';
+  const statusFilter = document.getElementById('filterStatusSelect')?.value || 'all';
+
+  const hasActiveFilters = query !== '' || focusFilter !== 'all' || categoryFilter !== 'all' || originFilter !== 'all' || statusFilter !== 'all';
+  const clearBtn = document.getElementById('clearLibraryFiltersBtn');
+  if (clearBtn) {
+    clearBtn.classList.toggle('hidden', !hasActiveFilters);
+  }
 
   const filtered = state.catalog.videos.filter(v => {
-    if (!query && v.focusId !== state.activeFocus) return false;
+    // 1. Focus filter
+    if (focusFilter !== 'all' && v.focusId !== Number(focusFilter)) {
+      return false;
+    }
+    // 2. Category filter
+    if (categoryFilter !== 'all' && v.category !== categoryFilter) {
+      return false;
+    }
+    // 3. Origin filter
+    if (originFilter !== 'all') {
+      const vOrigin = v.origin || (v.originRaw && v.originRaw.includes('Health Is Looks') ? 'Health Is Looks' : 'Oscar Patel');
+      if (vOrigin !== originFilter) return false;
+    }
+    // 4. Status filter
     const isDone = Boolean(me.videoProgressMap[v.id]);
     if (statusFilter === 'pending' && isDone) return false;
     if (statusFilter === 'done' && !isDone) return false;
+    // 5. Query
     if (query) {
       const hay = `${v.title} ${v.description} ${v.category} ${v.positionLabel} ${v.origin || ''} ${v.originRaw || ''}`.toLowerCase();
       return hay.includes(query);
@@ -554,9 +603,14 @@ function renderLibraryView() {
     return true;
   });
 
+  const countLabel = document.getElementById('libraryCountLabel');
+  if (countLabel) {
+    countLabel.textContent = `Mostrando ${filtered.length} de ${totalVids} videos`;
+  }
+
   const listEl = document.getElementById('libraryVideosList');
   if (filtered.length === 0) {
-    listEl.innerHTML = `<p class="muted" style="padding:16px 0; text-align:center;">No hay videos que coincidan con este filtro.</p>`;
+    listEl.innerHTML = `<p class="muted" style="padding:24px 0; text-align:center;">No hay videos que coincidan con los filtros seleccionados.</p>`;
   } else {
     listEl.innerHTML = filtered.map(v => renderVideoRow(v)).join('');
   }
@@ -655,7 +709,24 @@ function renderSettingsView(user) {
 
 // Actions
 window.selectFocus = function(focusId) {
-  state.activeFocus = focusId;
+  state.activeFocus = focusId === 'all' ? 'all' : Number(focusId);
+  const sel = document.getElementById('filterFocusSelect');
+  if (sel) sel.value = String(state.activeFocus);
+  renderLibraryView();
+};
+
+window.clearLibraryFilters = function() {
+  state.activeFocus = 'all';
+  const searchInput = document.getElementById('searchVideosInput');
+  if (searchInput) searchInput.value = '';
+  const focusSel = document.getElementById('filterFocusSelect');
+  if (focusSel) focusSel.value = 'all';
+  const catSel = document.getElementById('filterCategorySelect');
+  if (catSel) catSel.value = 'all';
+  const origSel = document.getElementById('filterOriginSelect');
+  if (origSel) origSel.value = 'all';
+  const statSel = document.getElementById('filterStatusSelect');
+  if (statSel) statSel.value = 'all';
   renderLibraryView();
 };
 
@@ -875,8 +946,15 @@ document.querySelectorAll('#weekSelectorTabs .pill-tab').forEach(btn => {
   });
 });
 
-document.getElementById('searchVideosInput').addEventListener('input', () => renderLibraryView());
-document.getElementById('filterStatusSelect').addEventListener('change', () => renderLibraryView());
+document.getElementById('searchVideosInput')?.addEventListener('input', () => renderLibraryView());
+document.getElementById('filterFocusSelect')?.addEventListener('change', e => {
+  state.activeFocus = e.target.value === 'all' ? 'all' : Number(e.target.value);
+  renderLibraryView();
+});
+document.getElementById('filterCategorySelect')?.addEventListener('change', () => renderLibraryView());
+document.getElementById('filterOriginSelect')?.addEventListener('change', () => renderLibraryView());
+document.getElementById('filterStatusSelect')?.addEventListener('change', () => renderLibraryView());
+document.getElementById('clearLibraryFiltersBtn')?.addEventListener('click', () => clearLibraryFilters());
 
 document.getElementById('copyInviteBtn').addEventListener('click', () => {
   const code = document.getElementById('myInviteCodeInput').value;

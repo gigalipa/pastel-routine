@@ -289,6 +289,55 @@ h3 {
   margin-bottom: 14px;
 }
 
+.library-filter-box {
+  background: var(--surface-soft);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px;
+  margin-bottom: 14px;
+}
+
+.filter-controls-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
+  gap: 8px;
+}
+
+.filter-control-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.filter-control-item label {
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.filter-control-item select {
+  width: 100%;
+  font-size: 0.82rem;
+  padding: 7px 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+}
+
+.filter-summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--border);
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .pill-tab {
   border: 1px solid var(--border);
   background: var(--surface);

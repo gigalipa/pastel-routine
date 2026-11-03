@@ -96,24 +96,62 @@
         </div>
       </section>
 
-      <!-- TAB 2: BIBLIOTECA (66 VIDEOS) -->
+      <!-- TAB 2: BIBLIOTECA -->
       <section id="viewLibrary" class="hidden">
         <div class="card">
-          <h2>Biblioteca Completa (66 Videos)</h2>
+          <h2>Biblioteca Completa</h2>
           <p class="muted" style="margin-bottom: 12px;">
-            Organizados por enfoque y orden progresivo de dificultad según tu hoja de cálculo.
+            Explora todos los videos de la rutina o fíltralos por enfoque, categoría, origen y estado.
           </p>
           <div id="globalProgressSummary" style="margin-bottom: 14px;"></div>
 
           <div class="focus-tabs" id="focusSelectorTabs"></div>
 
-          <div style="display:flex; gap:8px; margin-bottom: 12px;">
-            <input id="searchVideosInput" type="search" placeholder="Buscar por título, técnica o categoría..." />
-            <select id="filterStatusSelect" style="max-width: 150px;">
-              <option value="all">Todos</option>
-              <option value="pending">Por ver</option>
-              <option value="done">Completados</option>
-            </select>
+          <div class="library-filter-box">
+            <div style="margin-bottom: 10px;">
+              <input id="searchVideosInput" type="search" placeholder="🔍 Buscar por título, técnica, palabra clave..." />
+            </div>
+
+            <div class="filter-controls-grid">
+              <div class="filter-control-item">
+                <label for="filterFocusSelect">Enfoque</label>
+                <select id="filterFocusSelect">
+                  <option value="all">Todos los enfoques</option>
+                </select>
+              </div>
+
+              <div class="filter-control-item">
+                <label for="filterCategorySelect">Categoría</label>
+                <select id="filterCategorySelect">
+                  <option value="all">Todas las categorías</option>
+                </select>
+              </div>
+
+              <div class="filter-control-item">
+                <label for="filterOriginSelect">Origen</label>
+                <select id="filterOriginSelect">
+                  <option value="all">Todos los orígenes</option>
+                  <option value="Oscar Patel">Oscar Patel</option>
+                  <option value="Health Is Looks">Health Is Looks</option>
+                </select>
+              </div>
+
+              <div class="filter-control-item">
+                <label for="filterStatusSelect">Estado</label>
+                <select id="filterStatusSelect">
+                  <option value="all">Todos (vistos y por ver)</option>
+                  <option value="pending">Por ver (pendientes)</option>
+                  <option value="done">Completados</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="filter-summary-row">
+              <span id="libraryCountLabel" class="muted" style="font-size: 0.85rem;"></span>
+              <button id="clearLibraryFiltersBtn" class="btn btn-secondary btn-sm hidden" type="button">
+                ✕ Limpiar filtros
+              </button>
+            </div>
           </div>
 
           <div id="libraryVideosList"></div>
