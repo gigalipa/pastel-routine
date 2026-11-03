@@ -402,6 +402,20 @@ h3 {
   color: #2f5b75;
 }
 
+.badge-origin-patel {
+  background: var(--sand-light);
+  border: 1px solid #e8dbca;
+  color: #7d542b;
+  font-weight: 700;
+}
+
+.badge-origin-health {
+  background: #edf6f0;
+  border: 1px solid #c2e2ce;
+  color: #28613d;
+  font-weight: 700;
+}
+
 .progress-bar-wrap {
   background: var(--surface-soft);
   height: 10px;

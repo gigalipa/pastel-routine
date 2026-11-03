@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pastel-routine-v6';
+const CACHE_NAME = 'pastel-routine-v7';
 const ASSETS = [
   '/',
   '/index.html',

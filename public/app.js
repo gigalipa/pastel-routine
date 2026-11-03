@@ -459,6 +459,8 @@ function renderTodayView() {
   checklistEl.innerHTML = weekPlan.dailyChecklist.map(item => {
     const isDone = me.todayBlocks.includes(item.id);
     const video = state.catalog.videos.find(v => v.id === item.videoId);
+    const origin = video ? (video.origin || (video.originRaw && video.originRaw.includes('Health Is Looks') ? 'Health Is Looks' : 'Oscar Patel')) : null;
+    const originBadgeClass = origin === 'Health Is Looks' ? 'badge-origin-health' : 'badge-origin-patel';
     return `
       <div class="checklist-item ${isDone ? 'done' : ''}">
         <button class="check-btn" type="button" onclick="toggleDailyChecklist('${item.id}')" title="Marcar práctica de hoy">
@@ -468,6 +470,7 @@ function renderTodayView() {
           <div class="item-title">${item.title}</div>
           <div>
             <span class="badge">⏱ ${item.duration}</span>
+            ${origin ? `<span class="badge ${originBadgeClass}">${origin}</span>` : ''}
             ${video ? `<span class="badge">${video.focusTitle}</span>` : ''}
             ${video ? `<span class="badge badge-pos">📍 Posición ${video.positionLabel}</span>` : ''}
           </div>
@@ -490,6 +493,8 @@ function renderVideoRow(v) {
   const { me } = state.dashboard;
   const prog = me.videoProgressMap[v.id];
   const isDone = Boolean(prog);
+  const origin = v.origin || (v.originRaw && v.originRaw.includes('Health Is Looks') ? 'Health Is Looks' : 'Oscar Patel');
+  const originBadgeClass = origin === 'Health Is Looks' ? 'badge-origin-health' : 'badge-origin-patel';
   return `
     <div class="video-item ${isDone ? 'done' : ''}">
       <button class="check-btn" type="button" onclick="toggleVideoQuick('${v.id}', ${isDone})" title="Marcar video como visto/aprendido">
@@ -499,6 +504,7 @@ function renderVideoRow(v) {
         <div class="item-title">Posición ${v.positionLabel} — ${v.title}</div>
         <p class="muted" style="font-size:0.84rem; margin-bottom:4px;">${v.description}</p>
         <div>
+          <span class="badge ${originBadgeClass}">${origin}</span>
           <span class="badge">${v.focusTitle}</span>
           <span class="badge">${v.category}</span>
           ${v.recommendedWeek ? `<span class="badge badge-week">Semana ${v.recommendedWeek}</span>` : ''}
@@ -542,7 +548,7 @@ function renderLibraryView() {
     if (statusFilter === 'pending' && isDone) return false;
     if (statusFilter === 'done' && !isDone) return false;
     if (query) {
-      const hay = `${v.title} ${v.description} ${v.category} ${v.positionLabel}`.toLowerCase();
+      const hay = `${v.title} ${v.description} ${v.category} ${v.positionLabel} ${v.origin || ''} ${v.originRaw || ''}`.toLowerCase();
       return hay.includes(query);
     }
     return true;
@@ -747,6 +753,13 @@ window.openVideoModal = function(videoId, blockId = null) {
   state.modalBlockId = blockId;
 
   const prog = state.dashboard.me.videoProgressMap[videoId];
+  const origin = video.origin || (video.originRaw && video.originRaw.includes('Health Is Looks') ? 'Health Is Looks' : 'Oscar Patel');
+  const originBadgeClass = origin === 'Health Is Looks' ? 'badge-origin-health' : 'badge-origin-patel';
+  const originEl = document.getElementById('modalVideoOrigin');
+  if (originEl) {
+    originEl.textContent = origin;
+    originEl.className = `badge ${originBadgeClass}`;
+  }
   document.getElementById('modalVideoBadge').textContent = `${video.focusTitle} · ${video.positionLabel}`;
   document.getElementById('modalVideoTitle').textContent = video.title;
   document.getElementById('modalVideoDesc').textContent = video.description;

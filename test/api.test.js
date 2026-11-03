@@ -63,12 +63,12 @@ test('Marking a video as seen from the modal also marks its corresponding daily 
   });
   const { token } = await res.json();
 
-  // User watches the 45-min map video (e4-p6) on 2026-11-02 and clicks "Marcar como visto y guardar nota"
+  // User watches the 45-min map video (e4-p13) on 2026-11-02 and clicks "Marcar como visto y guardar nota"
   const markRes = await fetch(`${baseUrl}/api/progress/video`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     body: JSON.stringify({
-      videoId: 'e4-p6',
+      videoId: 'e4-p13',
       notes: 'Visto completo (45 min)',
       date: '2026-11-02'
     })
@@ -81,8 +81,8 @@ test('Marking a video as seen from the modal also marks its corresponding daily 
   });
   assert.equal(dashRes.status, 200);
   const dash = await dashRes.json();
-  assert.ok(dash.me.videoProgressMap['e4-p6'], 'Video should be marked in library');
-  assert.equal(dash.me.videoProgressMap['e4-p6'].notes, 'Visto completo (45 min)');
+  assert.ok(dash.me.videoProgressMap['e4-p13'], 'Video should be marked in library');
+  assert.equal(dash.me.videoProgressMap['e4-p13'].notes, 'Visto completo (45 min)');
   assert.ok(dash.me.todayBlocks.includes('w1-map'), 'Daily checklist item w1-map should be automatically checked for today');
 });
 
